@@ -1,1 +1,296 @@
+import React, { useState } from "react";
 
+type Link = {
+  id: number;
+  name: string;
+  url: string;
+};
+
+const EmployeeDashboard: React.FC = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [links, setLinks] = useState<Link[]>([]);
+  const [newLink, setNewLink] = useState({ name: "", url: "" });
+  const [editMode, setEditMode] = useState(false);
+
+  // drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleCreate = () => {
+    if (newLink.name && newLink.url) {
+      setLinks([{ id: Date.now(), ...newLink }, ...links]);
+      setNewLink({ name: "", url: "" });
+      setShowCreate(false);
+    }
+  };
+
+  const handleRemove = (index: number) => {
+    setLinks(links.filter((_, i) => i !== index));
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+    const updatedLinks = [...links];
+    const draggedLink = updatedLinks.splice(draggedIndex, 1)[0];
+    updatedLinks.splice(index, 0, draggedLink);
+    setLinks(updatedLinks);
+    setDraggedIndex(index);
+  };
+
+  return (
+    <div style={{ fontFamily: "system-ui", height: "100vh", background: "#f4f6fb" }}>
+      <header style={{ padding: "1rem", background: "#23272f", color: "white", display: "flex", alignItems: "center" }}>
+        <button
+          style={{
+            background: "none",
+            border: "none",
+            color: "white",
+            fontSize: "2rem",
+            cursor: "pointer",
+            marginRight: "1rem"
+          }}
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="Open menu"
+        >
+          ☰
+        </button>
+        <h1 style={{ margin: 0, fontWeight: 500 }}>Employee Dashboard</h1>
+      </header>
+      {/* Side Hamburger Menu */}
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: menuOpen ? 0 : "-260px",
+          height: "100%",
+          width: 260,
+          background: "#fff",
+          boxShadow: "2px 0 8px 0 #0001",
+          padding: "1.5rem 1rem",
+          transition: "left .3s cubic-bezier(.4,0,.2,1)",
+          zIndex: 10
+        }}
+      >
+        <button
+          onClick={() => setMenuOpen(false)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#555",
+            fontSize: "1.4rem",
+            cursor: "pointer",
+            display: "block",
+            marginLeft: "auto",
+            marginBottom: "1rem"
+          }}
+          aria-label="Close menu"
+        >
+          ×
+        </button>
+        {/* Links List */}
+        <div>
+          {links.map((link, i) => (
+            <div
+              key={link.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                margin: "0.5rem 0",
+                opacity: editMode ? 0.7 : 1,
+                cursor: editMode ? "grab" : "pointer",
+                background: editMode ? "#f1f1f1" : "transparent",
+                borderRadius: 4,
+                padding: "0.25rem 0.5rem"
+              }}
+              draggable={editMode}
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                handleDragOver(i);
+              }}
+            >
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  flex: 1,
+                  color: "#23272f",
+                  textDecoration: "none",
+                  fontWeight: 500,
+                  fontSize: 16
+                }}
+              >
+                {link.name}
+              </a>
+              {editMode && (
+                <button
+                  onClick={() => handleRemove(i)}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    color: "#ff4f4f",
+                    fontSize: "1.2rem",
+                    marginLeft: 8,
+                    cursor: "pointer"
+                  }}
+                  aria-label="Remove link"
+                  title="Remove"
+                >
+                  🗑️
+                </button>
+              )}
+              {editMode && (
+                <span style={{ marginLeft: 8, fontSize: "1.1rem", color: "#888" }} title="Drag to move">
+                  ☰
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Create Link Button and Fields */}
+        <div style={{ marginTop: "2rem" }}>
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              background: "#2b7cff",
+              color: "white",
+              border: "none",
+              borderRadius: 5,
+              fontWeight: 500,
+              cursor: "pointer",
+              marginBottom: showCreate ? 12 : 0,
+              boxShadow: "0 1px 4px #0001"
+            }}
+          >
+            + Create Link
+          </button>
+          {showCreate && (
+            <div style={{ marginTop: 10, background: "#f6faff", borderRadius: 5, padding: 12 }}>
+              <input
+                style={{
+                  width: "100%",
+                  marginBottom: 8,
+                  padding: "0.5rem",
+                  borderRadius: 4,
+                  border: "1px solid #ddd"
+                }}
+                placeholder="Name"
+                value={newLink.name}
+                onChange={(e) => setNewLink((l) => ({ ...l, name: e.target.value }))}
+              />
+              <input
+                style={{
+                  width: "100%",
+                  marginBottom: 8,
+                  padding: "0.5rem",
+                  borderRadius: 4,
+                  border: "1px solid #ddd"
+                }}
+                placeholder="URL"
+                value={newLink.url}
+                onChange={(e) => setNewLink((l) => ({ ...l, url: e.target.value }))}
+                type="url"
+              />
+              <button
+                onClick={handleCreate}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  background: "#2b7cff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  fontWeight: 500
+                }}
+              >
+                Add Link
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Settings Button */}
+        <div style={{ marginTop: "1.5rem" }}>
+          <button
+            onClick={() => setShowSettings((s) => !s)}
+            style={{
+              width: "100%",
+              padding: "0.7rem",
+              background: "#e7e9f7",
+              color: "#23272f",
+              border: "none",
+              borderRadius: 5,
+              fontWeight: 500,
+              cursor: "pointer",
+              boxShadow: "0 1px 4px #0001"
+            }}
+          >
+            ⚙️ Settings
+          </button>
+          {showSettings && (
+            <div style={{ marginTop: 10, padding: 12, background: "#f5f5fa", borderRadius: 5 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label htmlFor="edit-toggle" style={{ fontWeight: 500 }}>Edit menu items</label>
+                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                  <input
+                    id="edit-toggle"
+                    type="checkbox"
+                    checked={editMode}
+                    onChange={() => setEditMode((e) => !e)}
+                    style={{ display: "none" }}
+                  />
+                  <span
+                    style={{
+                      width: 36,
+                      height: 20,
+                      background: editMode ? "#2b7cff" : "#ccc",
+                      borderRadius: 12,
+                      position: "relative",
+                      transition: "background .2s",
+                      display: "inline-block"
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: editMode ? 18 : 2,
+                        top: 2,
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        boxShadow: "0 1px 4px #0002",
+                        transition: "left .2s"
+                      }}
+                    />
+                  </span>
+                </label>
+              </div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>
+                Toggle to move and remove menu items.
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+      {/* Main content */}
+      <div style={{ marginLeft: menuOpen ? 260 : 0, transition: "margin-left .3s cubic-bezier(.4,0,.2,1)" }}>
+        <div style={{ padding: "2rem" }}>
+          <h2>Welcome to the Employee Dashboard</h2>
+          <p>
+            Use the menu to create quick links or organize your shortcuts. Use settings to edit your menu.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EmployeeDashboard;
