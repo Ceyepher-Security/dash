@@ -4,16 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Security Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
-    <button id="hamburger">☰</button>
-    <img id="logo" src="/default-logo.png" alt="Logo">
+    <button id="hamburger" aria-label="Toggle menu">☰</button>
+    <img id="logo" src="default-logo.png" alt="Dashboard Logo">
     <h1>Security Dashboard</h1>
-    <nav id="quick-access"></nav>
+    <nav id="quick-access" aria-label="Quick access links"></nav>
   </header>
-  <aside id="sidebar" class="hidden">
+  <aside id="sidebar">
     <ul id="menu-links">
       <li><a href="#" data-link="/">Dashboard</a></li>
     </ul>
@@ -24,17 +25,17 @@
           Edit Mode
           <input type="checkbox" id="edit-toggle">
         </label>
-        <label>Choose Logo <input type="file" id="logo-upload"></label>
-        <label>Choose Background <input type="file" id="bg-upload"></label>
+        <label>Choose Logo <input type="file" id="logo-upload" accept="image/*"></label>
+        <label>Choose Background <input type="file" id="bg-upload" accept="image/*"></label>
       </div>
     </div>
     <div id="add-link">
       <button id="add-link-toggle">➕ Add Link</button>
-      <div id="add-link-form" class="hidden">
-        <input type="text" id="link-name" placeholder="Name" />
-        <input type="url" id="link-url" placeholder="URL" />
-        <button id="create-link">Create</button>
-      </div>
+      <form id="add-link-form" class="hidden">
+        <input type="text" id="link-name" placeholder="Name" required />
+        <input type="url" id="link-url" placeholder="URL" required />
+        <button type="button" id="create-link">Create</button>
+      </form>
     </div>
   </aside>
   <main id="viewports"></main>
