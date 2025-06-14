@@ -10,15 +10,23 @@
     <!-- Header -->
     <header id="dashboard-header">
       <div id="hamburger" tabindex="0">&#9776;</div>
-      <img id="dashboard-logo" src="" alt="Logo" />
       <div id="quicklinks-header"></div>
     </header>
     <!-- Hamburger Menu -->
     <nav id="side-menu" class="hidden" tabindex="-1">
+      <div id="menu-logo-container">
+        <img id="dashboard-logo" src="" alt="Logo" />
+      </div>
       <ul id="menu-links">
-        <li id="menu-custom-links"></li>
+        <!-- Dashboard and custom links rendered here -->
       </ul>
       <div id="menu-bottom">
+        <button id="add-link-btn">+ Add Link</button>
+        <div id="add-link-panel" class="hidden">
+          <input type="text" id="new-link-name" placeholder="Name" />
+          <input type="url" id="new-link-url" placeholder="URL" />
+          <button id="save-link">Save</button>
+        </div>
         <button id="settings-btn" title="Settings">
           <span class="icon">&#9881;</span>
         </button>
@@ -34,12 +42,8 @@
           <input type="file" id="logo-upload" accept="image/*" style="display:none" />
           <button id="choose-bg">Choose Background</button>
           <input type="file" id="bg-upload" accept="image/*" style="display:none" />
-        </div>
-        <button id="add-link-btn">+ Add Link</button>
-        <div id="add-link-panel" class="hidden">
-          <input type="text" id="new-link-name" placeholder="Name" />
-          <input type="url" id="new-link-url" placeholder="URL" />
-          <button id="save-link">Save</button>
+          <!-- Previous links list will be injected here dynamically -->
+          <div id="settings-extra"></div>
         </div>
       </div>
     </nav>
