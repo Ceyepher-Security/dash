@@ -16,15 +16,16 @@ const CUSTOM_LINKS_KEY = 'customLinks';
 const QUICKLINKS_KEY = 'quickLinks';
 const LOGO_KEY = 'dashboardLogo';
 const BG_KEY = 'dashboardBg';
+const PREVIOUS_LINKS_KEY = 'previousLinks';
 
 // --- DOM Elements ---
 const hamburger = document.getElementById('hamburger');
 const sideMenu = document.getElementById('side-menu');
-const menuCustomLinks = document.getElementById('menu-custom-links');
 const addLinkBtn = document.getElementById('add-link-btn');
 const addLinkPanel = document.getElementById('add-link-panel');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
+const settingsExtra = document.getElementById('settings-extra');
 const toggleEditSwitch = document.getElementById('toggle-edit-switch');
 const toggleEditMenu = document.getElementById('toggle-edit-menu');
 const newLinkName = document.getElementById('new-link-name');
@@ -37,18 +38,127 @@ const chooseBg = document.getElementById('choose-bg');
 const bgUpload = document.getElementById('bg-upload');
 const quickLinksHeader = document.getElementById('quicklinks-header');
 const viewportCarousel = document.getElementById('viewport-carousel');
+const menuLinks = document.getElementById('menu-links');
 
 // --- State ---
 let customLinks = LS.get(CUSTOM_LINKS_KEY, []);
 let quickLinks = LS.get(QUICKLINKS_KEY, []);
 let editMode = false;
 let activeViewportIdx = -1;
-let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
+let viewports = [];
 
-// --- Menu Logic ---
+// --- Restore Link helpers ---
+function getPreviousLinks() {
+  return LS.get(PREVIOUS_LINKS_KEY, []);
+}
+function addToPreviousLinks(link) {
+  const prev = getPreviousLinks();
+  if (!prev.find(l => l.url === link.url)) {
+    prev.push(link);
+    LS.set(PREVIOUS_LINKS_KEY, prev);
+  }
+}
+function removeFromPreviousLinks(url) {
+  const prev = getPreviousLinks().filter(l => l.url !== url);
+  LS.set(PREVIOUS_LINKS_KEY, prev);
+}
+
+function renderPreviousLinksList() {
+  let old = document.getElementById('previous-links-row');
+  if (old) old.remove();
+  if (!editMode) return;
+  const prevLinks = getPreviousLinks();
+  if (prevLinks.length === 0) return;
+
+  // Row container (centered plus button)
+  const row = document.createElement('div');
+  row.id = 'previous-links-row';
+  row.style.justifyContent = "center";
+  row.style.display = "flex";
+  row.style.flexDirection = "column";
+  row.style.alignItems = "center";
+
+  // Plus button
+  const addBtn = document.createElement('button');
+  addBtn.type = "button";
+  addBtn.title = "Show previously deleted links";
+  addBtn.innerHTML = "+";
+  addBtn.style.margin = "0 auto";
+  addBtn.style.display = "block";
+
+  addBtn.onclick = (e) => {
+    let listDiv = document.getElementById('prev-links-list');
+    if (listDiv) return; // Don't close on plus click anymore
+
+    // Show the list
+    listDiv = document.createElement('div');
+    listDiv.id = 'prev-links-list';
+    listDiv.style.margin = "16px auto 0 auto";
+    listDiv.style.display = "flex";
+    listDiv.style.flexDirection = "column";
+    listDiv.style.gap = "8px";
+    listDiv.style.background = "#f9fafb";
+    listDiv.style.border = "1px solid var(--border)";
+    listDiv.style.borderRadius = "8px";
+    listDiv.style.padding = "12px 0";
+    listDiv.style.width = "90%";
+    listDiv.style.maxWidth = "210px";
+    listDiv.style.position = "static";
+
+    prevLinks.forEach((link, i) => {
+      const linkBtn = document.createElement('button');
+      linkBtn.type = "button";
+      linkBtn.textContent = link.name + " (" + link.url + ")";
+      linkBtn.style.background = "var(--surface)";
+      linkBtn.style.border = "none";
+      linkBtn.style.textAlign = "left";
+      linkBtn.style.padding = "8px 12px";
+      linkBtn.style.cursor = "pointer";
+      linkBtn.style.fontSize = "1em";
+      linkBtn.style.borderRadius = "0";
+      linkBtn.style.transition = "background .13s";
+      linkBtn.onmouseenter = () => linkBtn.style.background = "var(--input-bg)";
+      linkBtn.onmouseleave = () => linkBtn.style.background = "var(--surface)";
+      linkBtn.onclick = (event) => {
+        if (!customLinks.some(l => l.url === link.url)) {
+          customLinks.push(link);
+          LS.set(CUSTOM_LINKS_KEY, customLinks);
+          renderMenuLinks();
+          renderQuickLinks();
+          updateMenuHeight();
+        }
+        // Close popout on link click
+        if (listDiv && listDiv.parentElement) listDiv.remove();
+        // Remove event listener for outside click
+        document.removeEventListener("mousedown", outsideListener);
+      };
+      listDiv.appendChild(linkBtn);
+    });
+
+    row.appendChild(listDiv);
+
+    // Close the popout if clicking outside the popup
+    function outsideListener(ev) {
+      if (
+        listDiv &&
+        !listDiv.contains(ev.target) &&
+        ev.target !== addBtn
+      ) {
+        if (listDiv.parentElement) listDiv.remove();
+        document.removeEventListener("mousedown", outsideListener);
+      }
+    }
+    setTimeout(() => {
+      document.addEventListener("mousedown", outsideListener);
+    }, 0);
+  };
+  row.appendChild(addBtn);
+
+  settingsExtra.innerHTML = "";
+  settingsExtra.appendChild(row);
+}
 
 function updateMenuHeight() {
-  const menuLinks = document.getElementById('menu-links');
   const menuBottom = document.getElementById('menu-bottom');
   const numLinks = customLinks.length + 1; // +1 for Dashboard
   let linkHeight = 0;
@@ -61,12 +171,24 @@ function updateMenuHeight() {
     linkHeight = dummy.offsetHeight;
     menuLinks.removeChild(dummy);
   }
-  const total = (linkHeight * numLinks) + menuBottom.offsetHeight + 10;
+  const total = (linkHeight * numLinks) + (menuBottom ? menuBottom.offsetHeight : 0) + 10;
   sideMenu.style.height = total + "px";
 }
 
 function renderCustomLinks() {
-  menuCustomLinks.innerHTML = '';
+  // Remove old container if exists
+  let old = document.getElementById('menu-custom-links');
+  if (old) old.remove();
+
+  // Create new container
+  const customLi = document.createElement('li');
+  customLi.id = "menu-custom-links";
+  customLi.style.display = "flex";
+  customLi.style.flexDirection = "column";
+  customLi.style.gap = "0";
+
+  let draggingIdx = null;
+
   customLinks.forEach((link, idx) => {
     const btn = document.createElement('button');
     btn.type = "button";
@@ -75,10 +197,58 @@ function renderCustomLinks() {
     btn.tabIndex = 0;
     btn.innerText = link.name;
 
-    btn.addEventListener('click', (e) => {
+    // Drag and drop logic
+    btn.draggable = editMode;
+    btn.style.opacity = "1";
+    btn.addEventListener('dragstart', (e) => {
+      if (!editMode) return;
+      draggingIdx = idx;
+      btn.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', idx);
+      e.dataTransfer.setDragImage(btn, 10, 10);
+    });
+    btn.addEventListener('dragend', () => {
+      btn.classList.remove('dragging');
+      draggingIdx = null;
+      Array.from(customLi.children).forEach(el => el.classList.remove('drag-over'));
+    });
+    btn.addEventListener('dragover', (e) => {
+      if (!editMode) return;
       e.preventDefault();
-      openViewport(link.name, link.url, false);
-      closeMenu();
+      btn.classList.add('drag-over');
+    });
+    btn.addEventListener('dragleave', () => {
+      btn.classList.remove('drag-over');
+    });
+    btn.addEventListener('drop', (e) => {
+      if (!editMode) return;
+      e.preventDefault();
+      btn.classList.remove('drag-over');
+      const fromIdx = Number(e.dataTransfer.getData('text/plain'));
+      const toIdx = Number(btn.dataset.idx);
+      if (fromIdx !== toIdx) {
+        const moved = customLinks.splice(fromIdx, 1)[0];
+        customLinks.splice(toIdx, 0, moved);
+        LS.set(CUSTOM_LINKS_KEY, customLinks);
+        renderCustomLinks();
+        renderQuickLinks();
+        updateMenuHeight();
+      }
+    });
+
+    btn.addEventListener('mousedown', (e) => {
+      if (editMode && e.button === 0) {
+        btn.draggable = true;
+      }
+    });
+
+    btn.addEventListener('click', (e) => {
+      if (!editMode) {
+        e.preventDefault();
+        // Always create a new viewport when a link is clicked
+        openViewportAlwaysNew(link.name, link.url);
+      }
     });
 
     // Remove button in edit mode
@@ -89,63 +259,32 @@ function renderCustomLinks() {
       remove.title = "Remove link";
       remove.addEventListener('click', (e) => {
         e.stopPropagation();
+        // Add to previous links before deleting
+        addToPreviousLinks(link);
         customLinks.splice(idx, 1);
         LS.set(CUSTOM_LINKS_KEY, customLinks);
         renderCustomLinks();
         renderQuickLinks();
         updateMenuHeight();
+        renderPreviousLinksList();
       });
       btn.appendChild(remove);
-
-      // Move/drag logic
-      btn.draggable = true;
-      btn.addEventListener('dragstart', (e) => {
-        btn.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', idx);
-      });
-      btn.addEventListener('dragend', () => {
-        btn.classList.remove('dragging');
-        Array.from(menuCustomLinks.children).forEach(el => el.classList.remove('drag-over'));
-      });
-      btn.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        btn.classList.add('drag-over');
-      });
-      btn.addEventListener('dragleave', () => btn.classList.remove('drag-over'));
-      btn.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const fromIdx = Number(e.dataTransfer.getData('text/plain'));
-        const toIdx = Number(btn.dataset.idx);
-        if (fromIdx !== toIdx) {
-          const moved = customLinks.splice(fromIdx, 1)[0];
-          customLinks.splice(toIdx, 0, moved);
-          LS.set(CUSTOM_LINKS_KEY, customLinks);
-          renderCustomLinks();
-          renderQuickLinks();
-          updateMenuHeight();
-        }
-      });
     }
-    // Allow drag to quicklinks
-    btn.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('custom-link-idx', idx);
-    });
 
-    btn.addEventListener('mousedown', (e) => {
-      if (!editMode && e.button === 0) {
-        btn.draggable = true;
-      }
-    });
-
-    menuCustomLinks.appendChild(btn);
+    customLi.appendChild(btn);
   });
+
+  // Insert custom links after the dashboard link
+  if (menuLinks.children.length > 1) {
+    menuLinks.replaceChild(customLi, menuLinks.children[1]);
+  } else {
+    menuLinks.appendChild(customLi);
+  }
+
   updateMenuHeight();
 }
 
 function renderMenuLinks() {
-  // Clear and render Dashboard and custom links
-  const menuLinks = document.getElementById('menu-links');
   menuLinks.innerHTML = '';
   // Dashboard link
   const dashBtn = document.createElement('button');
@@ -164,10 +303,10 @@ function renderMenuLinks() {
   customLi.id = "menu-custom-links";
   menuLinks.appendChild(customLi);
 
-  // Now render custom links into that container
   renderCustomLinks();
 }
 
+// --- Quick Links ---
 function renderQuickLinks() {
   quickLinksHeader.innerHTML = '';
   quickLinks.forEach(idx => {
@@ -177,7 +316,7 @@ function renderQuickLinks() {
       btn.textContent = customLinks[idx].name;
       btn.title = customLinks[idx].url;
       btn.addEventListener('click', (e) => {
-        openViewport(customLinks[idx].name, customLinks[idx].url, false);
+        openViewportAlwaysNew(customLinks[idx].name, customLinks[idx].url);
       });
 
       btn.draggable = true;
@@ -199,6 +338,7 @@ function renderQuickLinks() {
   };
 }
 
+// --- Menu Open/Close ---
 function openMenu() {
   sideMenu.classList.add('visible');
   sideMenu.classList.remove('hidden');
@@ -215,6 +355,14 @@ hamburger.addEventListener('click', (e) => {
   else openMenu();
 });
 document.addEventListener('keydown', (e) => {
+  // Prevent Chrome from hijacking Alt+Tab if on this page
+  if (e.key === "Tab" && e.altKey) {
+    e.preventDefault();
+    if (viewports.length > 1) {
+      activeViewportIdx = (activeViewportIdx + 1) % viewports.length;
+      renderViewports();
+    }
+  }
   if (e.key === "Escape") closeMenu();
 });
 
@@ -232,12 +380,15 @@ saveLink.addEventListener('click', () => {
     LS.set(CUSTOM_LINKS_KEY, customLinks);
     renderMenuLinks();
     renderQuickLinks();
+    updateMenuHeight();
     newLinkName.value = '';
     newLinkUrl.value = '';
     addLinkPanel.classList.add('hidden');
     setTimeout(() => {
-      menuCustomLinks.lastChild?.scrollIntoView({behavior:"smooth"});
+      let last = document.querySelector('#menu-custom-links button:last-child');
+      if (last) last.scrollIntoView({behavior:"smooth"});
       updateMenuHeight();
+      renderPreviousLinksList();
     }, 0);
   }
 });
@@ -258,8 +409,10 @@ toggleEditMenu.addEventListener('change', () => {
     toggleEditSwitch.classList.remove('checked');
   }
   renderMenuLinks();
+  renderPreviousLinksList();
 });
 
+// Logo/BG
 chooseLogo.addEventListener('click', () => logoUpload.click());
 logoUpload.addEventListener('change', (e) => {
   const file = e.target.files[0];
@@ -288,50 +441,34 @@ bgUpload.addEventListener('change', (e) => {
   }
 });
 
-menuCustomLinks.ondragover = (e) => e.preventDefault();
-menuCustomLinks.ondrop = (e) => {
-  const qidx = e.dataTransfer.getData('quick-link-idx');
-  if (qidx !== '') {
-    quickLinks = quickLinks.filter(idx => idx !== Number(qidx));
-    LS.set(QUICKLINKS_KEY, quickLinks);
-    renderQuickLinks();
-  }
-};
-
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
 // --- Viewports/Carousel ---
 
-/**
- * Opens a module (viewport).
- * - If isHome is true, opens the "Dashboard".
- * - If already open, focuses it.
- * - Modules start with pan enabled.
- */
 function openViewport(name, url, isHome) {
-  // If Dashboard requested, remove all modules and show a blank state (no Dashboard module)
+  // Only used for Dashboard (home) mode.
   if (isHome) {
     viewports = [];
     activeViewportIdx = -1;
     renderViewports();
     return;
   }
-  let existingIdx = viewports.findIndex(v => v.url === url);
-  if (existingIdx !== -1) {
-    activeViewportIdx = existingIdx;
-    renderViewports();
-    return;
-  }
-  let x = 60 + Math.random()*60, y = 90 + Math.random()*60, w = 470, h = 330;
+  // Should not be used for custom links anymore
+}
+
+// Always create a new viewport for custom links, never reuse or replace
+function openViewportAlwaysNew(name, url) {
+  // Always add a new viewport instance regardless of URL/name
+  let x = 60 + Math.random() * 60, y = 90 + Math.random() * 60, w = 470, h = 330;
   viewports.push({
-    id: `vp-${Date.now()}`,
+    id: `vp-${Date.now()}-${Math.floor(Math.random() * 100000)}-${Math.random().toString(36).substring(2, 8)}-${crypto.randomUUID()}`,
     name,
     url,
     isHome: false,
     maximized: false,
-    pan: {x:0, y:0}, zoom: 1,
+    pan: { x: 0, y: 0 }, zoom: 1,
     x, y, w, h
   });
   activeViewportIdx = viewports.length - 1;
@@ -377,7 +514,7 @@ function renderViewports() {
     head.title = vp.url;
 
     // Drag logic
-    let drag = {active: false, mouseX: 0, mouseY: 0, startX: 0, startY: 0};
+    let drag = { active: false, mouseX: 0, mouseY: 0, startX: 0, startY: 0 };
     head.style.cursor = "move";
     head.addEventListener('mousedown', (ev) => {
       if (vp.maximized || ev.button !== 0) return;
@@ -449,29 +586,23 @@ function renderViewports() {
     panOverlay.style.display = 'none';
     contentWrapper.appendChild(panOverlay);
 
-    // Always show iframe/content, but use overlay for pan
     if (vp.url) {
       const iframe = document.createElement('iframe');
       iframe.className = 'viewport-iframe';
       iframe.src = vp.url;
       iframe.style.transform = `translate(${vp.pan.x}px,${vp.pan.y}px) scale(${vp.zoom})`;
       iframe.style.pointerEvents = "auto";
-      iframe.onload = () => {
-        // No-op: pan is handled by overlay regardless of iframe content
-      };
       contentWrapper.appendChild(iframe);
 
-      // --- Pan logic for all modules using overlay ---
-      let isPanning = false, startX = 0, startY = 0, startPan = {x:0, y:0};
+      let isPanning = false, startX = 0, startY = 0, startPan = { x: 0, y: 0 };
       contentWrapper.addEventListener('mousedown', (e) => {
-        // Only left button and not header
         if (e.button !== 0 || e.target === head) return;
         isPanning = true;
         panOverlay.style.display = "block";
         panOverlay.style.cursor = "grabbing";
         startX = e.clientX;
         startY = e.clientY;
-        startPan = {...vp.pan};
+        startPan = { ...vp.pan };
         e.preventDefault();
       });
       window.addEventListener('mousemove', (e) => {
@@ -491,7 +622,6 @@ function renderViewports() {
         }
       });
 
-      // Zoom (unchanged)
       contentWrapper.addEventListener('wheel', (e) => {
         if (e.altKey) {
           e.preventDefault();
@@ -526,22 +656,6 @@ function renderViewports() {
   });
 }
 
-document.addEventListener('keydown', (e) => {
-  if (e.altKey && e.key === 'Tab') {
-    e.preventDefault();
-    if (viewports.length > 1) {
-      activeViewportIdx = (activeViewportIdx + 1) % viewports.length;
-      renderViewports();
-    }
-  }
-});
-
-Array.from(document.getElementsByClassName('custom-link')).forEach(btn => {
-  btn.addEventListener('dragstart', (e) => {
-    e.dataTransfer.setData('custom-link-idx', btn.dataset.idx);
-  });
-});
-
 function applyLogoAndBg() {
   const logoData = LS.get(LOGO_KEY, '');
   if (logoData) {
@@ -566,47 +680,9 @@ function init() {
   renderMenuLinks();
   renderQuickLinks();
   applyLogoAndBg();
-  // Do NOT open dashboard module on load (blank state)
+  renderPreviousLinksList();
 }
 init();
-
-menuCustomLinks.addEventListener('dragstart', (e) => {
-  if (e.target.classList.contains('menu-link')) {
-    e.dataTransfer.setData('custom-link-idx', e.target.dataset.idx);
-  }
-});
-quickLinksHeader.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  quickLinksHeader.classList.add('quicklink-drag-over');
-});
-quickLinksHeader.addEventListener('dragleave', (e) => {
-  quickLinksHeader.classList.remove('quicklink-drag-over');
-});
-quickLinksHeader.addEventListener('drop', (e) => {
-  quickLinksHeader.classList.remove('quicklink-drag-over');
-  const idx = e.dataTransfer.getData('custom-link-idx');
-  if (idx !== '' && !quickLinks.includes(Number(idx))) {
-    quickLinks.push(Number(idx));
-    LS.set(QUICKLINKS_KEY, quickLinks);
-    renderQuickLinks();
-  }
-});
-
-quickLinksHeader.addEventListener('dragstart', (e) => {
-  const btnIdx = Array.from(quickLinksHeader.children).indexOf(e.target);
-  if (btnIdx !== -1) {
-    e.dataTransfer.setData('quick-link-idx', quickLinks[btnIdx]);
-  }
-});
-menuCustomLinks.addEventListener('dragover', (e) => e.preventDefault());
-menuCustomLinks.addEventListener('drop', (e) => {
-  const qidx = e.dataTransfer.getData('quick-link-idx');
-  if (qidx !== '') {
-    quickLinks = quickLinks.filter(i => i !== Number(qidx));
-    LS.set(QUICKLINKS_KEY, quickLinks);
-    renderQuickLinks();
-  }
-});
 
 document.addEventListener('mousedown', (e) => {
   if (sideMenu.classList.contains('visible') && !sideMenu.contains(e.target) && e.target !== hamburger) {
