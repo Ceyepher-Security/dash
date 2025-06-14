@@ -25,6 +25,7 @@ const addLinkBtn = document.getElementById('add-link-btn');
 const addLinkPanel = document.getElementById('add-link-panel');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
+const toggleEditSwitch = document.getElementById('toggle-edit-switch');
 const toggleEditMenu = document.getElementById('toggle-edit-menu');
 const newLinkName = document.getElementById('new-link-name');
 const newLinkUrl = document.getElementById('new-link-url');
@@ -160,7 +161,7 @@ function renderQuickLinks() {
   };
 }
 
-// Fix: Toggle both .visible and .hidden for menu open/close
+// Modern menu open/close (toggle .visible and .hidden)
 function openMenu() {
   sideMenu.classList.add('visible');
   sideMenu.classList.remove('hidden');
@@ -188,6 +189,9 @@ document.querySelector('.menu-link[data-link="home"]').addEventListener('click',
 // Add Link
 addLinkBtn.addEventListener('click', () => {
   addLinkPanel.classList.toggle('hidden');
+  if (!addLinkPanel.classList.contains('hidden')) {
+    newLinkName.focus();
+  }
 });
 saveLink.addEventListener('click', () => {
   const name = newLinkName.value.trim();
@@ -199,7 +203,16 @@ saveLink.addEventListener('click', () => {
     newLinkName.value = '';
     newLinkUrl.value = '';
     addLinkPanel.classList.add('hidden');
+    // Optionally scroll to the new link
+    setTimeout(() => {
+      menuCustomLinks.lastChild?.scrollIntoView({behavior:"smooth"});
+    }, 0);
   }
+});
+[newLinkName, newLinkUrl].forEach(input => {
+  input.addEventListener('keydown', e => {
+    if (e.key === "Enter") saveLink.click();
+  });
 });
 
 // Settings
@@ -208,6 +221,11 @@ settingsBtn.addEventListener('click', () => {
 });
 toggleEditMenu.addEventListener('change', () => {
   editMode = toggleEditMenu.checked;
+  if (editMode) {
+    toggleEditSwitch.classList.add('checked');
+  } else {
+    toggleEditSwitch.classList.remove('checked');
+  }
   renderCustomLinks();
 });
 
@@ -406,9 +424,6 @@ function renderViewports() {
           vp.pan.y = my - scaleDelta * (my - vp.pan.y);
           vp.zoom = newZoom;
           iframe.style.transform = `translate(${vp.pan.x}px,${vp.pan.y}px) scale(${vp.zoom})`;
-        } else {
-          // normal scroll
-          // Let iframe handle vertical scroll, but not horizontal
         }
       }, { passive: false });
     }
@@ -462,8 +477,6 @@ function init() {
   renderCustomLinks();
   renderQuickLinks();
   applyLogoAndBg();
-
-  // Open only default home on load
   openViewport('Dashboard', '', true);
 }
 init();
