@@ -43,7 +43,7 @@ let customLinks = LS.get(CUSTOM_LINKS_KEY, []);
 let quickLinks = LS.get(QUICKLINKS_KEY, []);
 let editMode = false;
 let activeViewportIdx = 0;
-let viewports = []; // {name, url, id, maximized, pan/zoom state}
+let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
 
 // --- Menu Logic ---
 
@@ -203,7 +203,6 @@ saveLink.addEventListener('click', () => {
     newLinkName.value = '';
     newLinkUrl.value = '';
     addLinkPanel.classList.add('hidden');
-    // Optionally scroll to the new link
     setTimeout(() => {
       menuCustomLinks.lastChild?.scrollIntoView({behavior:"smooth"});
     }, 0);
@@ -272,9 +271,13 @@ menuCustomLinks.ondrop = (e) => {
 
 // --- Viewports/Carousel ---
 
+// Utility: clamp value between min and max
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
 function openViewport(name, url, isHome) {
   if (isHome) {
-    // Only one dashboard home viewport at a time
     let homeIdx = viewports.findIndex(v => v.isHome);
     if (homeIdx !== -1) {
       switchToViewport(homeIdx);
@@ -286,24 +289,28 @@ function openViewport(name, url, isHome) {
       url: '',
       isHome: true,
       maximized: false,
-      pan: {x:0, y:0}, zoom: 1
+      pan: {x:0, y:0}, zoom: 1,
+      x: 60 + Math.random()*40, y: 90 + Math.random()*30, w: 470, h: 330
     });
     switchToViewport(viewports.length - 1);
     renderViewports();
     return;
   }
-  // Already open?
   let existingIdx = viewports.findIndex(v => v.url === url);
   if (existingIdx !== -1) {
     switchToViewport(existingIdx);
     return;
   }
+  // Start smaller & scattered
+  let x = 60 + Math.random()*60, y = 90 + Math.random()*60, w = 470, h = 330;
   viewports.push({
     id: `vp-${Date.now()}`,
     name,
     url,
+    isHome: false,
     maximized: false,
-    pan: {x:0, y:0}, zoom: 1
+    pan: {x:0, y:0}, zoom: 1,
+    x, y, w, h
   });
   switchToViewport(viewports.length - 1);
   renderViewports();
@@ -323,7 +330,6 @@ function removeViewport(idx) {
 function renderViewports() {
   viewportCarousel.innerHTML = '';
   if (!viewports.length) {
-    // Show home by default
     openViewport('Dashboard', '', true);
     return;
   }
@@ -331,6 +337,19 @@ function renderViewports() {
     const vpDiv = document.createElement('div');
     vpDiv.className = 'viewport' + (vp.maximized ? ' maximized' : '') + (idx !== activeViewportIdx ? ' inactive' : '');
     vpDiv.dataset.idx = idx;
+
+    // Position and size
+    if (!vp.maximized) {
+      vpDiv.style.left = `${vp.x || 64}px`;
+      vpDiv.style.top = `${vp.y || 64}px`;
+      vpDiv.style.width = `${vp.w || 470}px`;
+      vpDiv.style.height = `${vp.h || 330}px`;
+    } else {
+      vpDiv.style.left = "";
+      vpDiv.style.top = "";
+      vpDiv.style.width = "";
+      vpDiv.style.height = "";
+    }
 
     // Header
     const head = document.createElement('div');
@@ -375,7 +394,6 @@ function renderViewports() {
     contentWrapper.style.overflow = 'hidden';
 
     if (vp.isHome) {
-      // Home dashboard content placeholder
       contentWrapper.innerHTML = `<div style="padding:32px;font-size:1.3em;color:#222;">Welcome to your Security Dashboard!</div>`;
     } else {
       // Iframe with pan/zoom
@@ -414,8 +432,7 @@ function renderViewports() {
       contentWrapper.addEventListener('wheel', (e) => {
         if (e.altKey) {
           e.preventDefault();
-          let newZoom = Math.max(0.1, Math.min(4, vp.zoom + (e.deltaY < 0 ? 0.1 : -0.1)));
-          // keep mouse point under cursor
+          let newZoom = clamp(vp.zoom + (e.deltaY < 0 ? 0.1 : -0.1), 0.1, 4);
           const rect = contentWrapper.getBoundingClientRect();
           const mx = e.clientX - rect.left;
           const my = e.clientY - rect.top;
@@ -428,6 +445,46 @@ function renderViewports() {
       }, { passive: false });
     }
     vpDiv.appendChild(contentWrapper);
+
+    // --- Resizing logic ---
+    if (!vp.maximized) {
+      vpDiv.style.resize = "both";
+      // Save size on mouseup after resizing
+      vpDiv.addEventListener('mouseup', (e) => {
+        const rect = vpDiv.getBoundingClientRect();
+        // Only update if size changed
+        if (Math.abs(rect.width - vp.w) > 2 || Math.abs(rect.height - vp.h) > 2) {
+          vp.w = clamp(rect.width, 240, window.innerWidth * 0.97);
+          vp.h = clamp(rect.height, 120, window.innerHeight * 0.92);
+        }
+      });
+      // Make draggable by header
+      let drag = {active: false, offsetX:0, offsetY:0};
+      head.style.cursor = "move";
+      head.addEventListener('mousedown', (ev) => {
+        if (vp.maximized || ev.button !== 0) return;
+        drag.active = true;
+        drag.offsetX = ev.clientX - vpDiv.getBoundingClientRect().left;
+        drag.offsetY = ev.clientY - vpDiv.getBoundingClientRect().top;
+        document.body.style.userSelect = "none";
+      });
+      window.addEventListener('mousemove', (ev) => {
+        if (drag.active) {
+          vp.x = clamp(ev.clientX - drag.offsetX, 0, window.innerWidth - (vpDiv.offsetWidth || 470));
+          vp.y = clamp(ev.clientY - drag.offsetY, 0, window.innerHeight - (vpDiv.offsetHeight || 330));
+          vpDiv.style.left = `${vp.x}px`;
+          vpDiv.style.top = `${vp.y}px`;
+        }
+      });
+      window.addEventListener('mouseup', () => {
+        if (drag.active) {
+          drag.active = false;
+          document.body.style.userSelect = "";
+        }
+      });
+    } else {
+      vpDiv.style.resize = "none";
+    }
 
     viewportCarousel.appendChild(vpDiv);
   });
