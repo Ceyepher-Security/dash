@@ -160,12 +160,14 @@ function renderQuickLinks() {
   };
 }
 
+// Fix: Toggle both .visible and .hidden for menu open/close
 function openMenu() {
   sideMenu.classList.add('visible');
+  sideMenu.classList.remove('hidden');
 }
-
 function closeMenu() {
   sideMenu.classList.remove('visible');
+  sideMenu.classList.add('hidden');
 }
 
 hamburger.addEventListener('click', () => {
