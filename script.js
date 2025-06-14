@@ -1,4 +1,69 @@
-// ... (keep the rest of your script as before) ...
+// --- Persistent Data Helpers ---
+const LS = {
+  get(key, fallback) {
+    try {
+      return JSON.parse(localStorage.getItem(key)) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+};
+
+const CUSTOM_LINKS_KEY = 'customLinks';
+const QUICKLINKS_KEY = 'quickLinks';
+const LOGO_KEY = 'dashboardLogo';
+const BG_KEY = 'dashboardBg';
+
+// --- DOM Elements ---
+const hamburger = document.getElementById('hamburger');
+const sideMenu = document.getElementById('side-menu');
+const menuCustomLinks = document.getElementById('menu-custom-links');
+const addLinkBtn = document.getElementById('add-link-btn');
+const addLinkPanel = document.getElementById('add-link-panel');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsPanel = document.getElementById('settings-panel');
+const toggleEditSwitch = document.getElementById('toggle-edit-switch');
+const toggleEditMenu = document.getElementById('toggle-edit-menu');
+const newLinkName = document.getElementById('new-link-name');
+const newLinkUrl = document.getElementById('new-link-url');
+const saveLink = document.getElementById('save-link');
+const logo = document.getElementById('dashboard-logo');
+const logoUpload = document.getElementById('logo-upload');
+const chooseLogo = document.getElementById('choose-logo');
+const chooseBg = document.getElementById('choose-bg');
+const bgUpload = document.getElementById('bg-upload');
+const quickLinksHeader = document.getElementById('quicklinks-header');
+const viewportCarousel = document.getElementById('viewport-carousel');
+
+// --- State ---
+let customLinks = LS.get(CUSTOM_LINKS_KEY, []);
+let quickLinks = LS.get(QUICKLINKS_KEY, []);
+let editMode = false;
+let activeViewportIdx = 0;
+let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
+
+// --- Menu Logic ---
+
+function updateMenuHeight() {
+  const menuLinks = document.getElementById('menu-links');
+  const menuBottom = document.getElementById('menu-bottom');
+  const numLinks = customLinks.length;
+  let linkHeight = 0;
+  if (numLinks > 0) {
+    const dummy = document.createElement('button');
+    dummy.className = "custom-link";
+    dummy.style.visibility = "hidden";
+    dummy.textContent = "dummy";
+    menuLinks.appendChild(dummy);
+    linkHeight = dummy.offsetHeight;
+    menuLinks.removeChild(dummy);
+  }
+  const total = (linkHeight * numLinks) + menuBottom.offsetHeight + 10;
+  sideMenu.style.height = total + "px";
+}
 
 function renderCustomLinks() {
   menuCustomLinks.innerHTML = '';
@@ -7,15 +72,6 @@ function renderCustomLinks() {
     const btn = document.createElement('button');
     btn.type = "button";
     btn.className = 'custom-link' + (editMode ? ' edit-mode' : '');
-    btn.style.width = "100%";
-    btn.style.display = "flex";
-    btn.style.alignItems = "center";
-    btn.style.justifyContent = "flex-start";
-    btn.style.background = "none";
-    btn.style.border = "none";
-    btn.style.font = "inherit";
-    btn.style.padding = "13px 20px 13px 22px";
-    btn.style.cursor = "pointer";
     btn.dataset.idx = idx;
     btn.tabIndex = 0;
     btn.innerText = link.name;
@@ -32,7 +88,6 @@ function renderCustomLinks() {
       remove.className = 'remove-link';
       remove.innerHTML = '&minus;';
       remove.title = "Remove link";
-      remove.style.marginLeft = "auto";
       remove.addEventListener('click', (e) => {
         e.stopPropagation();
         customLinks.splice(idx, 1);
@@ -90,7 +145,188 @@ function renderCustomLinks() {
   updateMenuHeight();
 }
 
-// ... (rest of your script unchanged) ...
+function renderQuickLinks() {
+  quickLinksHeader.innerHTML = '';
+  quickLinks.forEach(idx => {
+    if (customLinks[idx]) {
+      const btn = document.createElement('button');
+      btn.className = 'quicklink-header-btn';
+      btn.textContent = customLinks[idx].name;
+      btn.title = customLinks[idx].url;
+      btn.addEventListener('click', (e) => {
+        openViewport(customLinks[idx].name, customLinks[idx].url);
+      });
+
+      btn.draggable = true;
+      btn.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('quick-link-idx', idx);
+      });
+      quickLinksHeader.appendChild(btn);
+    }
+  });
+
+  quickLinksHeader.ondragover = e => e.preventDefault();
+  quickLinksHeader.ondrop = e => {
+    const idx = e.dataTransfer.getData('custom-link-idx');
+    if (idx !== '' && !quickLinks.includes(Number(idx))) {
+      quickLinks.push(Number(idx));
+      LS.set(QUICKLINKS_KEY, quickLinks);
+      renderQuickLinks();
+    }
+  };
+}
+
+function openMenu() {
+  sideMenu.classList.add('visible');
+  sideMenu.classList.remove('hidden');
+  updateMenuHeight();
+}
+function closeMenu() {
+  sideMenu.classList.remove('visible');
+  sideMenu.classList.add('hidden');
+}
+
+hamburger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (sideMenu.classList.contains('visible')) closeMenu();
+  else openMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === "Escape") closeMenu();
+});
+
+addLinkBtn.addEventListener('click', () => {
+  addLinkPanel.classList.toggle('hidden');
+  if (!addLinkPanel.classList.contains('hidden')) {
+    newLinkName.focus();
+  }
+});
+saveLink.addEventListener('click', () => {
+  const name = newLinkName.value.trim();
+  const url = newLinkUrl.value.trim();
+  if (name && url) {
+    customLinks.push({ name, url });
+    LS.set(CUSTOM_LINKS_KEY, customLinks);
+    renderCustomLinks();
+    newLinkName.value = '';
+    newLinkUrl.value = '';
+    addLinkPanel.classList.add('hidden');
+    setTimeout(() => {
+      menuCustomLinks.lastChild?.scrollIntoView({behavior:"smooth"});
+      updateMenuHeight();
+    }, 0);
+  }
+});
+[newLinkName, newLinkUrl].forEach(input => {
+  input.addEventListener('keydown', e => {
+    if (e.key === "Enter") saveLink.click();
+  });
+});
+
+settingsBtn.addEventListener('click', () => {
+  settingsPanel.classList.toggle('hidden');
+});
+toggleEditMenu.addEventListener('change', () => {
+  editMode = toggleEditMenu.checked;
+  if (editMode) {
+    toggleEditSwitch.classList.add('checked');
+  } else {
+    toggleEditSwitch.classList.remove('checked');
+  }
+  renderCustomLinks();
+});
+
+chooseLogo.addEventListener('click', () => logoUpload.click());
+logoUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      logo.src = ev.target.result;
+      logo.style.display = 'inline-block';
+      LS.set(LOGO_KEY, ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+chooseBg.addEventListener('click', () => bgUpload.click());
+bgUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('main-wrapper').style.backgroundImage = `url(${ev.target.result})`;
+      document.getElementById('main-wrapper').style.backgroundSize = 'cover';
+      document.getElementById('main-wrapper').style.backgroundRepeat = 'no-repeat';
+      LS.set(BG_KEY, ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+menuCustomLinks.ondragover = (e) => e.preventDefault();
+menuCustomLinks.ondrop = (e) => {
+  const qidx = e.dataTransfer.getData('quick-link-idx');
+  if (qidx !== '') {
+    quickLinks = quickLinks.filter(idx => idx !== Number(qidx));
+    LS.set(QUICKLINKS_KEY, quickLinks);
+    renderQuickLinks();
+  }
+};
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
+function openViewport(name, url, isHome) {
+  if (isHome) {
+    let homeIdx = viewports.findIndex(v => v.isHome);
+    if (homeIdx !== -1) {
+      switchToViewport(homeIdx);
+      return;
+    }
+    viewports.push({
+      id: `vp-${Date.now()}-home`,
+      name: 'Dashboard',
+      url: '',
+      isHome: true,
+      maximized: false,
+      pan: {x:0, y:0}, zoom: 1,
+      x: 60 + Math.random()*40, y: 90 + Math.random()*30, w: 470, h: 330
+    });
+    switchToViewport(viewports.length - 1);
+    renderViewports();
+    return;
+  }
+  let existingIdx = viewports.findIndex(v => v.url === url);
+  if (existingIdx !== -1) {
+    switchToViewport(existingIdx);
+    return;
+  }
+  let x = 60 + Math.random()*60, y = 90 + Math.random()*60, w = 470, h = 330;
+  viewports.push({
+    id: `vp-${Date.now()}`,
+    name,
+    url,
+    isHome: false,
+    maximized: false,
+    pan: {x:0, y:0}, zoom: 1,
+    x, y, w, h
+  });
+  switchToViewport(viewports.length - 1);
+  renderViewports();
+}
+
+function switchToViewport(idx) {
+  activeViewportIdx = idx;
+  renderViewports();
+}
+
+function removeViewport(idx) {
+  viewports.splice(idx, 1);
+  activeViewportIdx = Math.max(0, activeViewportIdx - 1);
+  renderViewports();
+}
 
 function renderViewports() {
   viewportCarousel.innerHTML = '';
@@ -103,7 +339,6 @@ function renderViewports() {
     vpDiv.className = 'viewport' + (vp.maximized ? ' maximized' : '') + (idx !== activeViewportIdx ? ' inactive' : '');
     vpDiv.dataset.idx = idx;
 
-    // Position and size
     if (!vp.maximized) {
       vpDiv.style.left = `${vp.x || 64}px`;
       vpDiv.style.top = `${vp.y || 64}px`;
@@ -116,17 +351,15 @@ function renderViewports() {
       vpDiv.style.height = "";
     }
 
-    // Header
     const head = document.createElement('div');
     head.className = 'viewport-header';
     head.textContent = vp.name;
     head.title = vp.url;
-    // Double click to maximize
+
     head.addEventListener('dblclick', () => {
       vp.maximized = !vp.maximized;
       renderViewports();
     });
-    // Minimize/maximize button
     if (vp.maximized) {
       const minBtn = document.createElement('button');
       minBtn.className = 'minimize-btn';
@@ -139,7 +372,6 @@ function renderViewports() {
       };
       head.appendChild(minBtn);
     }
-    // Close button, except home
     if (!vp.isHome) {
       const closeBtn = document.createElement('button');
       closeBtn.className = 'minimize-btn';
@@ -153,7 +385,6 @@ function renderViewports() {
     }
     vpDiv.appendChild(head);
 
-    // Content
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'viewport-content-wrapper';
     contentWrapper.style.overflow = 'hidden';
@@ -161,32 +392,28 @@ function renderViewports() {
     if (vp.isHome) {
       contentWrapper.innerHTML = `<div style="padding:32px;font-size:1.3em;color:#222;">Welcome to your Security Dashboard!</div>`;
     } else {
-      // Iframe with pan/zoom
       const iframe = document.createElement('iframe');
       iframe.className = 'viewport-iframe';
       iframe.src = vp.url;
       iframe.style.transform = `translate(${vp.pan.x}px,${vp.pan.y}px) scale(${vp.zoom})`;
       contentWrapper.appendChild(iframe);
 
-      // Pan/zoom logic
       let isDragging = false, startX = 0, startY = 0, startPan = {x:0, y:0};
 
-      // --- FIXED: DRAG HEADER, MOUSE STAYS WHERE CLICKED ---
+      // Module header drag - keep mouse at offset
       let drag = {active: false, offsetX:0, offsetY:0};
       head.style.cursor = "move";
       head.addEventListener('mousedown', (ev) => {
         if (vp.maximized || ev.button !== 0) return;
         drag.active = true;
-        // Use the viewport's bounding rect for accurate math
         const rect = vpDiv.getBoundingClientRect();
-        // The offset is mouse - viewport's top/left
         drag.offsetX = ev.clientX - rect.left;
         drag.offsetY = ev.clientY - rect.top;
         document.body.style.userSelect = "none";
+        ev.preventDefault();
       });
       window.addEventListener('mousemove', (ev) => {
         if (drag.active) {
-          // Use offset to keep mouse at the point where it was clicked
           vp.x = clamp(ev.clientX - drag.offsetX, 0, window.innerWidth - (vpDiv.offsetWidth || 470));
           vp.y = clamp(ev.clientY - drag.offsetY, 0, window.innerHeight - (vpDiv.offsetHeight || 330));
           vpDiv.style.left = `${vp.x}px`;
@@ -200,7 +427,6 @@ function renderViewports() {
         }
       });
 
-      // Pan/zoom (unchanged)
       contentWrapper.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
         isDragging = true;
@@ -223,7 +449,6 @@ function renderViewports() {
         contentWrapper.style.cursor = 'grab';
       });
 
-      // Zoom
       contentWrapper.addEventListener('wheel', (e) => {
         if (e.altKey) {
           e.preventDefault();
@@ -241,7 +466,6 @@ function renderViewports() {
     }
     vpDiv.appendChild(contentWrapper);
 
-    // --- Resizing logic ---
     if (!vp.maximized) {
       vpDiv.style.resize = "both";
       vpDiv.addEventListener('mouseup', (e) => {
@@ -258,4 +482,90 @@ function renderViewports() {
   });
 }
 
-// ... (keep the rest of your script as before) ...
+document.addEventListener('keydown', (e) => {
+  if (e.altKey && e.key === 'Tab') {
+    e.preventDefault();
+    if (viewports.length > 1) {
+      activeViewportIdx = (activeViewportIdx + 1) % viewports.length;
+      renderViewports();
+    }
+  }
+});
+
+Array.from(document.getElementsByClassName('custom-link')).forEach(btn => {
+  btn.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('custom-link-idx', btn.dataset.idx);
+  });
+});
+
+function applyLogoAndBg() {
+  const logoData = LS.get(LOGO_KEY, '');
+  if (logoData) {
+    logo.src = logoData;
+    logo.style.display = 'inline-block';
+  } else {
+    logo.style.display = 'none';
+  }
+  const bgData = LS.get(BG_KEY, '');
+  if (bgData) {
+    document.getElementById('main-wrapper').style.backgroundImage = `url(${bgData})`;
+    document.getElementById('main-wrapper').style.backgroundSize = 'cover';
+    document.getElementById('main-wrapper').style.backgroundRepeat = 'no-repeat';
+  } else {
+    document.getElementById('main-wrapper').style.backgroundImage = '';
+  }
+}
+
+function init() {
+  customLinks = LS.get(CUSTOM_LINKS_KEY, []);
+  quickLinks = LS.get(QUICKLINKS_KEY, []);
+  renderCustomLinks();
+  renderQuickLinks();
+  applyLogoAndBg();
+  openViewport('Dashboard', '', true);
+}
+init();
+
+menuCustomLinks.addEventListener('dragstart', (e) => {
+  if (e.target.classList.contains('custom-link')) {
+    e.dataTransfer.setData('custom-link-idx', e.target.dataset.idx);
+  }
+});
+quickLinksHeader.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  quickLinksHeader.classList.add('quicklink-drag-over');
+});
+quickLinksHeader.addEventListener('dragleave', (e) => {
+  quickLinksHeader.classList.remove('quicklink-drag-over');
+});
+quickLinksHeader.addEventListener('drop', (e) => {
+  quickLinksHeader.classList.remove('quicklink-drag-over');
+  const idx = e.dataTransfer.getData('custom-link-idx');
+  if (idx !== '' && !quickLinks.includes(Number(idx))) {
+    quickLinks.push(Number(idx));
+    LS.set(QUICKLINKS_KEY, quickLinks);
+    renderQuickLinks();
+  }
+});
+
+quickLinksHeader.addEventListener('dragstart', (e) => {
+  const btnIdx = Array.from(quickLinksHeader.children).indexOf(e.target);
+  if (btnIdx !== -1) {
+    e.dataTransfer.setData('quick-link-idx', quickLinks[btnIdx]);
+  }
+});
+menuCustomLinks.addEventListener('dragover', (e) => e.preventDefault());
+menuCustomLinks.addEventListener('drop', (e) => {
+  const qidx = e.dataTransfer.getData('quick-link-idx');
+  if (qidx !== '') {
+    quickLinks = quickLinks.filter(i => i !== Number(qidx));
+    LS.set(QUICKLINKS_KEY, quickLinks);
+    renderQuickLinks();
+  }
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (sideMenu.classList.contains('visible') && !sideMenu.contains(e.target) && e.target !== hamburger) {
+    closeMenu();
+  }
+});
