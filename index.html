@@ -29,16 +29,19 @@
           <span class="icon">&#9881;</span>
         </button>
         <div id="settings-panel" class="hidden">
-          <label class="toggle-edit">
-            <input type="checkbox" id="toggle-edit-menu" />
+          <div class="toggle-edit">
             <span>Edit Menu</span>
-          </label>
+            <label class="toggle-switch" id="toggle-edit-switch">
+              <input type="checkbox" id="toggle-edit-menu" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
           <button id="choose-logo">Choose Logo</button>
           <input type="file" id="logo-upload" accept="image/*" style="display:none" />
           <button id="choose-bg">Choose Background</button>
           <input type="file" id="bg-upload" accept="image/*" style="display:none" />
         </div>
-        <button id="add-link-btn">Add Link</button>
+        <button id="add-link-btn">+ Add Link</button>
         <div id="add-link-panel" class="hidden">
           <input type="text" id="new-link-name" placeholder="Name" />
           <input type="url" id="new-link-url" placeholder="URL" />
@@ -50,7 +53,6 @@
     <!-- Viewport Carousel -->
     <div id="viewport-carousel"></div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
