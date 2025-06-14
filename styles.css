@@ -48,20 +48,16 @@ header#dashboard-header {
 #dashboard-logo {
   width: 60px;
   height: 60px;
-  margin: 0 24px 0 22px;
+  margin: 0 0 0 0;
   object-fit: contain;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px 0 rgba(60,60,60,0.18);
   display: inline-block;
-}
-
-#dashboard-title {
-  font-size: 2.1em;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-align: center;
-  flex: 1 1 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
 }
 
 #hamburger {
@@ -78,6 +74,7 @@ header#dashboard-header {
   transform: translateY(-50%);
   background: none;
   color: #fff;
+  z-index: 2;
 }
 #hamburger:hover, #hamburger:focus {
   background: rgba(96,165,250,0.12);
@@ -147,7 +144,8 @@ header#dashboard-header {
   margin: 0;
   padding: 0;
 }
-.menu-link, .custom-link {
+.custom-link {
+  width: 100%;
   display: flex;
   align-items: center;
   color: #fff;
@@ -163,18 +161,19 @@ header#dashboard-header {
   gap: 8px;
   font-weight: 500;
   letter-spacing: 0.2px;
+  border: none;
+  text-align: left;
 }
-.menu-link:first-child, .custom-link:first-child {
+.custom-link:first-child {
   border-top: 1px solid var(--border);
 }
-.menu-link:hover, .custom-link:hover {
+.custom-link:hover {
   background: rgba(96,165,250,0.10);
 }
 .custom-link.edit-mode {
   background: rgba(96,165,250,0.08);
   cursor: grab;
 }
-.menu-link .remove-link,
 .custom-link .remove-link {
   margin-left: auto;
   color: var(--danger);
