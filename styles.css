@@ -46,18 +46,21 @@ header#dashboard-header {
 }
 
 #dashboard-logo {
-  width: 60px;
-  height: 60px;
-  margin: 0 0 0 0;
+  width: 250px;
+  height: 150px;
+  margin: 0;
   object-fit: contain;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px 0 rgba(60,60,60,0.18);
+  background: transparent;
+  border-radius: 18px;
+  box-shadow: none;
   display: inline-block;
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%,-50%);
+  opacity: 0.80;
+  pointer-events: none; /* so clicks pass through to hamburger etc */
+  z-index: 1;
 }
 
 #hamburger {
