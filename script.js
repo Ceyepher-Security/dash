@@ -47,6 +47,27 @@ let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
 
 // --- Menu Logic ---
 
+function updateMenuHeight() {
+  // Only show as tall as needed: links + menu-bottom
+  const menuLinks = document.getElementById('menu-links');
+  const menuBottom = document.getElementById('menu-bottom');
+  const numLinks = customLinks.length;
+  let linkHeight = 0;
+  if (numLinks > 0) {
+    // get the height of one link
+    const dummy = document.createElement('li');
+    dummy.className = "custom-link";
+    dummy.style.visibility = "hidden";
+    dummy.innerText = "dummy";
+    menuLinks.appendChild(dummy);
+    linkHeight = dummy.offsetHeight;
+    menuLinks.removeChild(dummy);
+  }
+  // Each link + menu-bottom + some margin
+  const total = (linkHeight * numLinks) + menuBottom.offsetHeight + 10;
+  sideMenu.style.height = total + "px";
+}
+
 function renderCustomLinks() {
   menuCustomLinks.innerHTML = '';
   customLinks.forEach((link, idx) => {
@@ -81,6 +102,7 @@ function renderCustomLinks() {
         LS.set(CUSTOM_LINKS_KEY, customLinks);
         renderCustomLinks();
         renderQuickLinks();
+        updateMenuHeight();
       });
       li.appendChild(remove);
 
@@ -109,6 +131,7 @@ function renderCustomLinks() {
           LS.set(CUSTOM_LINKS_KEY, customLinks);
           renderCustomLinks();
           renderQuickLinks();
+          updateMenuHeight();
         }
       });
     }
@@ -127,6 +150,7 @@ function renderCustomLinks() {
 
     menuCustomLinks.appendChild(li);
   });
+  updateMenuHeight();
 }
 
 function renderQuickLinks() {
@@ -165,6 +189,7 @@ function renderQuickLinks() {
 function openMenu() {
   sideMenu.classList.add('visible');
   sideMenu.classList.remove('hidden');
+  updateMenuHeight();
 }
 function closeMenu() {
   sideMenu.classList.remove('visible');
@@ -177,13 +202,6 @@ hamburger.addEventListener('click', () => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === "Escape") closeMenu();
-});
-
-// Dashboard Home
-document.querySelector('.menu-link[data-link="home"]').addEventListener('click', (e) => {
-  e.preventDefault();
-  openViewport('Dashboard', '', true);
-  closeMenu();
 });
 
 // Add Link
@@ -205,6 +223,7 @@ saveLink.addEventListener('click', () => {
     addLinkPanel.classList.add('hidden');
     setTimeout(() => {
       menuCustomLinks.lastChild?.scrollIntoView({behavior:"smooth"});
+      updateMenuHeight();
     }, 0);
   }
 });
@@ -262,7 +281,6 @@ menuCustomLinks.ondragover = (e) => e.preventDefault();
 menuCustomLinks.ondrop = (e) => {
   const qidx = e.dataTransfer.getData('quick-link-idx');
   if (qidx !== '') {
-    // Remove from quickLinks
     quickLinks = quickLinks.filter(idx => idx !== Number(qidx));
     LS.set(QUICKLINKS_KEY, quickLinks);
     renderQuickLinks();
@@ -270,8 +288,6 @@ menuCustomLinks.ondrop = (e) => {
 };
 
 // --- Viewports/Carousel ---
-
-// Utility: clamp value between min and max
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
@@ -301,7 +317,6 @@ function openViewport(name, url, isHome) {
     switchToViewport(existingIdx);
     return;
   }
-  // Start smaller & scattered
   let x = 60 + Math.random()*60, y = 90 + Math.random()*60, w = 470, h = 330;
   viewports.push({
     id: `vp-${Date.now()}`,
@@ -449,10 +464,8 @@ function renderViewports() {
     // --- Resizing logic ---
     if (!vp.maximized) {
       vpDiv.style.resize = "both";
-      // Save size on mouseup after resizing
       vpDiv.addEventListener('mouseup', (e) => {
         const rect = vpDiv.getBoundingClientRect();
-        // Only update if size changed
         if (Math.abs(rect.width - vp.w) > 2 || Math.abs(rect.height - vp.h) > 2) {
           vp.w = clamp(rect.width, 240, window.innerWidth * 0.97);
           vp.h = clamp(rect.height, 120, window.innerHeight * 0.92);
@@ -485,7 +498,6 @@ function renderViewports() {
     } else {
       vpDiv.style.resize = "none";
     }
-
     viewportCarousel.appendChild(vpDiv);
   });
 }
