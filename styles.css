@@ -5,12 +5,14 @@
   --accent-light: #60a5fa;
   --danger: #e84545;
   --background: #181a20;
-  --menu-bg: #2b313a;
-  --surface: #252a34;
-  --border: #343c4f;
-  --radius: 14px;
-  --transition: 0.23s cubic-bezier(.69,.11,.58,1.15);
+  --menu-bg: #232733;
+  --surface: #222733;
+  --border: #2f3640;
+  --radius: 16px;
+  --transition: 0.25s cubic-bezier(.69,.11,.58,1.15);
   --shadow: 0 6px 32px 0 rgba(0,0,0,0.18);
+  --header-height: 68px;
+  --side-menu-width: 220px;
 }
 
 body, html {
@@ -30,19 +32,23 @@ body, html {
 header#dashboard-header {
   display: flex;
   align-items: center;
-  height: 64px;
-  background: rgba(26,32,44,0.95);
+  justify-content: center;
+  height: var(--header-height);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
   color: #fff;
-  padding: 0 28px;
+  padding: 0 0;
   position: relative;
   z-index: 2;
   box-shadow: var(--shadow);
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  gap: 0;
 }
 
 #dashboard-logo {
-  width: 44px;
-  height: 44px;
-  margin: 0 18px 0 8px;
+  width: 38px;
+  height: 38px;
+  margin: 0 12px 0 12px;
   object-fit: contain;
   background: #fff;
   border-radius: 8px;
@@ -51,21 +57,27 @@ header#dashboard-header {
 }
 
 #dashboard-title {
-  font-size: 1.7em;
+  font-size: 1.45em;
   font-weight: 700;
   letter-spacing: 1px;
+  text-align: center;
   flex: 0 0 auto;
+  margin: 0 38px;
+  flex: 1 1 0;
 }
 
 #hamburger {
-  font-size: 2.4em;
+  font-size: 2.1em;
   cursor: pointer;
-  margin-right: 14px;
   outline: none;
   user-select: none;
   border-radius: 8px;
   transition: background 0.18s;
-  padding: 2px 10px;
+  padding: 4px 12px;
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 #hamburger:hover, #hamburger:focus {
   background: rgba(96,165,250,0.12);
@@ -74,8 +86,12 @@ header#dashboard-header {
 #quicklinks-header {
   display: flex;
   margin-left: auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .quicklink-header-btn {
@@ -99,14 +115,14 @@ header#dashboard-header {
   position: fixed;
   left: 0;
   top: 0;
-  width: 320px;
+  width: var(--side-menu-width);
   max-width: 90vw;
   height: 100%;
   background: var(--menu-bg);
   box-shadow: 6px 0 32px 0 rgba(0,0,0,0.18);
   color: #fff;
   z-index: 20;
-  padding-top: 64px;
+  padding-top: var(--header-height);
   transform: translateX(-110%);
   transition: transform var(--transition);
   display: flex;
@@ -122,7 +138,7 @@ header#dashboard-header {
 
 #side-menu ul {
   list-style: none;
-  padding: 0 0 0 0;
+  padding: 0;
   margin: 0;
 }
 
@@ -136,15 +152,15 @@ header#dashboard-header {
   align-items: center;
   color: #fff;
   text-decoration: none;
-  padding: 17px 32px 17px 34px;
+  padding: 13px 20px 13px 22px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  font-size: 1.14em;
+  font-size: 1.08em;
   background: none;
   transition: background 0.13s;
   position: relative;
   user-select: none;
-  gap: 10px;
+  gap: 8px;
   font-weight: 500;
   letter-spacing: 0.2px;
 }
@@ -165,11 +181,11 @@ header#dashboard-header {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.3em;
+  font-size: 1.15em;
   display: none;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
 }
@@ -184,16 +200,16 @@ header#dashboard-header {
 }
 
 .custom-link.drag-over {
-  border-top: 2.5px solid var(--accent-light);
+  border-top: 2px solid var(--accent-light);
 }
 
 #menu-bottom {
   border-top: 1.5px solid var(--border);
-  padding: 18px 0 22px 0;
+  padding: 10px 0 16px 0;
   background: var(--menu-bg);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   align-items: stretch;
   position: relative;
 }
@@ -203,14 +219,14 @@ header#dashboard-header {
   border: none;
   color: #fff;
   cursor: pointer;
-  font-size: 1.55em;
-  margin-left: 24px;
-  margin-bottom: 6px;
+  font-size: 1.35em;
+  margin-left: 20px;
+  margin-bottom: 5px;
   align-self: flex-start;
   transition: color .14s;
 }
 #settings-btn .icon {
-  font-size: 1.5em;
+  font-size: 1.2em;
 }
 #settings-btn:hover {
   color: var(--accent-light);
@@ -218,12 +234,12 @@ header#dashboard-header {
 
 #settings-panel {
   background: rgba(57,62,70,0.98);
-  padding: 13px 22px 17px 22px;
+  padding: 10px 12px 12px 12px;
   border-radius: 9px;
-  margin: 4px 22px 8px 22px;
+  margin: 4px 13px 8px 13px;
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 11px;
   position: relative;
   box-shadow: 0 2px 12px rgba(10,20,60,0.11);
 }
@@ -231,29 +247,32 @@ header#dashboard-header {
 .toggle-edit {
   display: flex;
   align-items: center;
-  gap: 18px;
-  font-size: 1.07em;
+  gap: 12px;
+  font-size: 1.06em;
+  justify-content: space-between;
 }
 
+/* Modern Toggle Switch */
 .toggle-switch {
-  width: 46px;
-  height: 26px;
+  width: 44px;
+  height: 22px;
   border-radius: 16px;
   background: #555;
   position: relative;
   cursor: pointer;
   transition: background .17s;
   display: inline-block;
+  vertical-align: middle;
 }
 .toggle-switch input[type="checkbox"] {
   display: none;
 }
 .toggle-slider {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   transition: left .17s, background .17s;
@@ -263,7 +282,7 @@ header#dashboard-header {
   background: var(--accent);
 }
 .toggle-switch.checked .toggle-slider {
-  left: 23px;
+  left: 24px;
   background: var(--accent-light);
 }
 
@@ -272,10 +291,9 @@ header#dashboard-header {
   color: var(--primary);
   border: none;
   border-radius: 6px;
-  padding: 8px 13px;
+  padding: 7px 10px;
   cursor: pointer;
-  font-size: 1em;
-  margin-bottom: 2px;
+  font-size: 0.97em;
   font-weight: 500;
   margin-right: 8px;
   transition: background .13s, color .13s;
@@ -291,13 +309,13 @@ header#dashboard-header {
   color: #fff;
   border: none;
   border-radius: 7px;
-  margin: 0 28px;
-  padding: 12px 0;
+  margin: 0 13px;
+  padding: 9px 0;
   cursor: pointer;
-  font-size: 1.13em;
+  font-size: 1.1em;
   font-weight: 600;
   margin-bottom: 2px;
-  margin-top: 10px;
+  margin-top: 8px;
   box-shadow: 0 2px 8px 0 rgba(60,60,60,0.11);
   transition: background .15s, transform .1s;
 }
@@ -308,22 +326,22 @@ header#dashboard-header {
 
 #add-link-panel {
   background: rgba(57,62,70,0.98);
-  padding: 15px 18px;
+  padding: 11px 10px;
   border-radius: 10px;
-  margin: 4px 24px 0 24px;
+  margin: 4px 13px 0 13px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   box-shadow: 0 2px 8px 0 rgba(10,20,60,0.08);
 }
 
 #add-link-panel input[type="text"],
 #add-link-panel input[type="url"] {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
   border: 1.5px solid var(--border);
   outline: none;
-  font-size: 1.08em;
+  font-size: 1.01em;
   font-weight: 500;
   background: #232733;
   color: #fff;
@@ -340,7 +358,7 @@ header#dashboard-header {
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 9px 0;
+  padding: 8px 0;
   cursor: pointer;
   font-size: 1em;
   font-weight: 600;
@@ -361,7 +379,7 @@ header#dashboard-header {
 #viewport-carousel {
   flex: 1 1 auto;
   width: 100vw;
-  height: calc(100vh - 64px);
+  height: calc(100vh - var(--header-height));
   overflow: hidden;
   position: relative;
   background: transparent;
@@ -372,28 +390,36 @@ header#dashboard-header {
 }
 
 .viewport {
-  width: 100%;
-  height: 100%;
+  width: 470px;
+  height: 330px;
+  min-width: 240px;
+  min-height: 120px;
+  max-width: 90vw;
+  max-height: 85vh;
   position: absolute;
-  top: 0; left: 0;
+  top: 28px;
+  left: 50px;
   background: #fff;
   box-shadow: var(--shadow);
-  border-radius: 0 0 var(--radius) var(--radius);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  transition: z-index 0.2s;
+  transition: z-index 0.2s, box-shadow .16s;
   z-index: 1;
   user-select: none;
   cursor: grab;
+  resize: both;
+  overflow: hidden;
 }
 .viewport.maximized {
   position: fixed !important;
-  top: 0; left: 0;
+  top: 0; left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
   border-radius: 0;
   z-index: 100;
   background: #fff;
+  resize: none !important;
 }
 .viewport.inactive {
   display: none;
@@ -402,9 +428,9 @@ header#dashboard-header {
 .viewport-header {
   background: var(--accent);
   color: #fff;
-  padding: 11px 24px;
+  padding: 8px 18px;
   font-weight: bold;
-  font-size: 1.16em;
+  font-size: 1.08em;
   cursor: pointer;
   user-select: none;
   display: flex;
@@ -419,7 +445,7 @@ header#dashboard-header {
   background: none;
   border: none;
   color: #eee;
-  font-size: 1.28em;
+  font-size: 1.15em;
   cursor: pointer;
   margin-left: 8px;
   transition: color .13s;
@@ -450,10 +476,9 @@ header#dashboard-header {
 }
 
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 10px;
   background: var(--surface);
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 6px;
