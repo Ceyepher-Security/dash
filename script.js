@@ -42,7 +42,7 @@ const viewportCarousel = document.getElementById('viewport-carousel');
 let customLinks = LS.get(CUSTOM_LINKS_KEY, []);
 let quickLinks = LS.get(QUICKLINKS_KEY, []);
 let editMode = false;
-let activeViewportIdx = 0;
+let activeViewportIdx = -1;
 let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
 
 // --- Menu Logic ---
@@ -50,11 +50,11 @@ let viewports = []; // {name, url, id, maximized, pan/zoom state, x, y, w, h}
 function updateMenuHeight() {
   const menuLinks = document.getElementById('menu-links');
   const menuBottom = document.getElementById('menu-bottom');
-  const numLinks = customLinks.length;
+  const numLinks = customLinks.length + 1; // +1 for Dashboard
   let linkHeight = 0;
   if (numLinks > 0) {
     const dummy = document.createElement('button');
-    dummy.className = "custom-link";
+    dummy.className = "menu-link";
     dummy.style.visibility = "hidden";
     dummy.textContent = "dummy";
     menuLinks.appendChild(dummy);
@@ -68,17 +68,16 @@ function updateMenuHeight() {
 function renderCustomLinks() {
   menuCustomLinks.innerHTML = '';
   customLinks.forEach((link, idx) => {
-    // Make each link a button!
     const btn = document.createElement('button');
     btn.type = "button";
-    btn.className = 'custom-link' + (editMode ? ' edit-mode' : '');
+    btn.className = 'menu-link' + (editMode ? ' edit-mode' : '');
     btn.dataset.idx = idx;
     btn.tabIndex = 0;
     btn.innerText = link.name;
 
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      openViewport(link.name, link.url);
+      openViewport(link.name, link.url, false);
       closeMenu();
     });
 
@@ -133,7 +132,6 @@ function renderCustomLinks() {
       e.dataTransfer.setData('custom-link-idx', idx);
     });
 
-    // Drag to header
     btn.addEventListener('mousedown', (e) => {
       if (!editMode && e.button === 0) {
         btn.draggable = true;
@@ -145,6 +143,31 @@ function renderCustomLinks() {
   updateMenuHeight();
 }
 
+function renderMenuLinks() {
+  // Clear and render Dashboard and custom links
+  const menuLinks = document.getElementById('menu-links');
+  menuLinks.innerHTML = '';
+  // Dashboard link
+  const dashBtn = document.createElement('button');
+  dashBtn.type = "button";
+  dashBtn.className = "menu-link";
+  dashBtn.innerText = "Dashboard";
+  dashBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    openViewport("Dashboard", "", true);
+    closeMenu();
+  });
+  menuLinks.appendChild(dashBtn);
+
+  // Custom links container
+  const customLi = document.createElement('li');
+  customLi.id = "menu-custom-links";
+  menuLinks.appendChild(customLi);
+
+  // Now render custom links into that container
+  renderCustomLinks();
+}
+
 function renderQuickLinks() {
   quickLinksHeader.innerHTML = '';
   quickLinks.forEach(idx => {
@@ -154,7 +177,7 @@ function renderQuickLinks() {
       btn.textContent = customLinks[idx].name;
       btn.title = customLinks[idx].url;
       btn.addEventListener('click', (e) => {
-        openViewport(customLinks[idx].name, customLinks[idx].url);
+        openViewport(customLinks[idx].name, customLinks[idx].url, false);
       });
 
       btn.draggable = true;
@@ -207,7 +230,8 @@ saveLink.addEventListener('click', () => {
   if (name && url) {
     customLinks.push({ name, url });
     LS.set(CUSTOM_LINKS_KEY, customLinks);
-    renderCustomLinks();
+    renderMenuLinks();
+    renderQuickLinks();
     newLinkName.value = '';
     newLinkUrl.value = '';
     addLinkPanel.classList.add('hidden');
@@ -233,7 +257,7 @@ toggleEditMenu.addEventListener('change', () => {
   } else {
     toggleEditSwitch.classList.remove('checked');
   }
-  renderCustomLinks();
+  renderMenuLinks();
 });
 
 chooseLogo.addEventListener('click', () => logoUpload.click());
@@ -278,29 +302,26 @@ function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
+// --- Viewports/Carousel ---
+
+/**
+ * Opens a module (viewport).
+ * - If isHome is true, opens the "Dashboard".
+ * - If already open, focuses it.
+ * - Modules start with pan enabled.
+ */
 function openViewport(name, url, isHome) {
+  // If Dashboard requested, remove all modules and show a blank state (no Dashboard module)
   if (isHome) {
-    let homeIdx = viewports.findIndex(v => v.isHome);
-    if (homeIdx !== -1) {
-      switchToViewport(homeIdx);
-      return;
-    }
-    viewports.push({
-      id: `vp-${Date.now()}-home`,
-      name: 'Dashboard',
-      url: '',
-      isHome: true,
-      maximized: false,
-      pan: {x:0, y:0}, zoom: 1,
-      x: 60 + Math.random()*40, y: 90 + Math.random()*30, w: 470, h: 330
-    });
-    switchToViewport(viewports.length - 1);
+    viewports = [];
+    activeViewportIdx = -1;
     renderViewports();
     return;
   }
   let existingIdx = viewports.findIndex(v => v.url === url);
   if (existingIdx !== -1) {
-    switchToViewport(existingIdx);
+    activeViewportIdx = existingIdx;
+    renderViewports();
     return;
   }
   let x = 60 + Math.random()*60, y = 90 + Math.random()*60, w = 470, h = 330;
@@ -313,7 +334,7 @@ function openViewport(name, url, isHome) {
     pan: {x:0, y:0}, zoom: 1,
     x, y, w, h
   });
-  switchToViewport(viewports.length - 1);
+  activeViewportIdx = viewports.length - 1;
   renderViewports();
 }
 
@@ -324,16 +345,14 @@ function switchToViewport(idx) {
 
 function removeViewport(idx) {
   viewports.splice(idx, 1);
-  activeViewportIdx = Math.max(0, activeViewportIdx - 1);
+  if (activeViewportIdx >= idx) activeViewportIdx--;
+  if (activeViewportIdx < 0) activeViewportIdx = viewports.length - 1;
   renderViewports();
 }
 
 function renderViewports() {
   viewportCarousel.innerHTML = '';
-  if (!viewports.length) {
-    openViewport('Dashboard', '', true);
-    return;
-  }
+  if (!viewports.length) return;
   viewports.forEach((vp, idx) => {
     const vpDiv = document.createElement('div');
     vpDiv.className = 'viewport' + (vp.maximized ? ' maximized' : '') + (idx !== activeViewportIdx ? ' inactive' : '');
@@ -351,10 +370,39 @@ function renderViewports() {
       vpDiv.style.height = "";
     }
 
+    // --- Header move (no jump) ---
     const head = document.createElement('div');
     head.className = 'viewport-header';
     head.textContent = vp.name;
     head.title = vp.url;
+
+    // Drag logic
+    let drag = {active: false, mouseX: 0, mouseY: 0, startX: 0, startY: 0};
+    head.style.cursor = "move";
+    head.addEventListener('mousedown', (ev) => {
+      if (vp.maximized || ev.button !== 0) return;
+      drag.active = true;
+      drag.mouseX = ev.clientX;
+      drag.mouseY = ev.clientY;
+      drag.startX = vp.x;
+      drag.startY = vp.y;
+      document.body.style.userSelect = "none";
+      ev.preventDefault();
+    });
+    window.addEventListener('mousemove', (ev) => {
+      if (drag.active) {
+        vp.x = clamp(drag.startX + (ev.clientX - drag.mouseX), 0, window.innerWidth - (vpDiv.offsetWidth || 470));
+        vp.y = clamp(drag.startY + (ev.clientY - drag.mouseY), 0, window.innerHeight - (vpDiv.offsetHeight || 330));
+        vpDiv.style.left = `${vp.x}px`;
+        vpDiv.style.top = `${vp.y}px`;
+      }
+    });
+    window.addEventListener('mouseup', () => {
+      if (drag.active) {
+        drag.active = false;
+        document.body.style.userSelect = "";
+      }
+    });
 
     head.addEventListener('dblclick', () => {
       vp.maximized = !vp.maximized;
@@ -372,71 +420,62 @@ function renderViewports() {
       };
       head.appendChild(minBtn);
     }
-    if (!vp.isHome) {
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'minimize-btn';
-      closeBtn.textContent = '✖';
-      closeBtn.title = 'Close';
-      closeBtn.onclick = (e) => {
-        e.stopPropagation();
-        removeViewport(idx);
-      };
-      head.appendChild(closeBtn);
-    }
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'minimize-btn';
+    closeBtn.textContent = '✖';
+    closeBtn.title = 'Close';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeViewport(idx);
+    };
+    head.appendChild(closeBtn);
     vpDiv.appendChild(head);
 
+    // --- Content wrapper with pan for all modules ---
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'viewport-content-wrapper';
     contentWrapper.style.overflow = 'hidden';
+    contentWrapper.style.position = 'relative';
 
-    if (vp.isHome) {
-      contentWrapper.innerHTML = `<div style="padding:32px;font-size:1.3em;color:#222;">Welcome to your Security Dashboard!</div>`;
-    } else {
+    // Pan overlay (covers iframe for drag)
+    const panOverlay = document.createElement('div');
+    panOverlay.style.position = 'absolute';
+    panOverlay.style.left = 0;
+    panOverlay.style.top = 0;
+    panOverlay.style.width = '100%';
+    panOverlay.style.height = '100%';
+    panOverlay.style.zIndex = 99;
+    panOverlay.style.cursor = 'grab';
+    panOverlay.style.display = 'none';
+    contentWrapper.appendChild(panOverlay);
+
+    // Always show iframe/content, but use overlay for pan
+    if (vp.url) {
       const iframe = document.createElement('iframe');
       iframe.className = 'viewport-iframe';
       iframe.src = vp.url;
       iframe.style.transform = `translate(${vp.pan.x}px,${vp.pan.y}px) scale(${vp.zoom})`;
+      iframe.style.pointerEvents = "auto";
+      iframe.onload = () => {
+        // No-op: pan is handled by overlay regardless of iframe content
+      };
       contentWrapper.appendChild(iframe);
 
-      let isDragging = false, startX = 0, startY = 0, startPan = {x:0, y:0};
-
-      // Module header drag - keep mouse at offset
-      let drag = {active: false, offsetX:0, offsetY:0};
-      head.style.cursor = "move";
-      head.addEventListener('mousedown', (ev) => {
-        if (vp.maximized || ev.button !== 0) return;
-        drag.active = true;
-        const rect = vpDiv.getBoundingClientRect();
-        drag.offsetX = ev.clientX - rect.left;
-        drag.offsetY = ev.clientY - rect.top;
-        document.body.style.userSelect = "none";
-        ev.preventDefault();
-      });
-      window.addEventListener('mousemove', (ev) => {
-        if (drag.active) {
-          vp.x = clamp(ev.clientX - drag.offsetX, 0, window.innerWidth - (vpDiv.offsetWidth || 470));
-          vp.y = clamp(ev.clientY - drag.offsetY, 0, window.innerHeight - (vpDiv.offsetHeight || 330));
-          vpDiv.style.left = `${vp.x}px`;
-          vpDiv.style.top = `${vp.y}px`;
-        }
-      });
-      window.addEventListener('mouseup', () => {
-        if (drag.active) {
-          drag.active = false;
-          document.body.style.userSelect = "";
-        }
-      });
-
+      // --- Pan logic for all modules using overlay ---
+      let isPanning = false, startX = 0, startY = 0, startPan = {x:0, y:0};
       contentWrapper.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        isDragging = true;
+        // Only left button and not header
+        if (e.button !== 0 || e.target === head) return;
+        isPanning = true;
+        panOverlay.style.display = "block";
+        panOverlay.style.cursor = "grabbing";
         startX = e.clientX;
         startY = e.clientY;
         startPan = {...vp.pan};
-        contentWrapper.style.cursor = 'grabbing';
+        e.preventDefault();
       });
       window.addEventListener('mousemove', (e) => {
-        if (isDragging) {
+        if (isPanning) {
           const dx = e.clientX - startX;
           const dy = e.clientY - startY;
           vp.pan.x = startPan.x + dx;
@@ -445,10 +484,14 @@ function renderViewports() {
         }
       });
       window.addEventListener('mouseup', () => {
-        isDragging = false;
-        contentWrapper.style.cursor = 'grab';
+        if (isPanning) {
+          isPanning = false;
+          panOverlay.style.display = "none";
+          panOverlay.style.cursor = "grab";
+        }
       });
 
+      // Zoom (unchanged)
       contentWrapper.addEventListener('wheel', (e) => {
         if (e.altKey) {
           e.preventDefault();
@@ -464,6 +507,7 @@ function renderViewports() {
         }
       }, { passive: false });
     }
+
     vpDiv.appendChild(contentWrapper);
 
     if (!vp.maximized) {
@@ -519,15 +563,15 @@ function applyLogoAndBg() {
 function init() {
   customLinks = LS.get(CUSTOM_LINKS_KEY, []);
   quickLinks = LS.get(QUICKLINKS_KEY, []);
-  renderCustomLinks();
+  renderMenuLinks();
   renderQuickLinks();
   applyLogoAndBg();
-  openViewport('Dashboard', '', true);
+  // Do NOT open dashboard module on load (blank state)
 }
 init();
 
 menuCustomLinks.addEventListener('dragstart', (e) => {
-  if (e.target.classList.contains('custom-link')) {
+  if (e.target.classList.contains('menu-link')) {
     e.dataTransfer.setData('custom-link-idx', e.target.dataset.idx);
   }
 });
