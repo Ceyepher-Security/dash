@@ -32,3 +32,18 @@ document.addEventListener('keydown', (e) => {
     iframe.src = historyStack[historyIndex];
   }
 });
+
+// Minimize / maximize logic for Mattermost chat
+const mattermostContainer = document.getElementById('mattermostContainer');
+const toggleMattermostBtn = document.getElementById('toggleMattermostBtn');
+
+toggleMattermostBtn.addEventListener('click', () => {
+  mattermostContainer.classList.toggle('minimized');
+  if (mattermostContainer.classList.contains('minimized')) {
+    toggleMattermostBtn.textContent = '+';
+    toggleMattermostBtn.setAttribute('aria-label', 'Maximize chat');
+  } else {
+    toggleMattermostBtn.textContent = '−';
+    toggleMattermostBtn.setAttribute('aria-label', 'Minimize chat');
+  }
+});
