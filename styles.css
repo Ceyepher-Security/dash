@@ -1,7 +1,14 @@
-. {
+* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  height: 100vh;
+  background-color: #121212; /* dark background */
+  color: #e0e0e0; /* light text */
+  overflow: hidden;
 }
 .header {
   width: 100%;
@@ -12,19 +19,10 @@
   align-items: center;
   user-select: none;
 }
-
 .logo {
   width: 150px;
   height: auto;
 }
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  height: 100vh;
-  background-color: #121212; /* dark background */
-  color: #e0e0e0; /* light text */
-  overflow: hidden;
-}
-
 .menu-container {
   position: fixed;
   top: 20px;
