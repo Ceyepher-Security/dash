@@ -23,7 +23,7 @@ body {
   padding: 0;
   border-radius: 0;
   box-shadow: none;
-  color: #e0e0e0; /* light color for hamburger */
+  color: #d3d3d3; /* light grey */
 }
 .dropdown-menu {
   margin-top: 10px;
