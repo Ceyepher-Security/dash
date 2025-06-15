@@ -1,51 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Security Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="main-wrapper">
-    <!-- Header -->
-    <header id="dashboard-header">
-      <div id="hamburger" tabindex="0">&#9776;</div>
-      <div id="quicklinks-header"></div>
-    </header>
-    <!-- Hamburger Menu -->
-    <nav id="side-menu" tabindex="-1">
-      <div id="menu-logo-container">
-        <img id="dashboard-logo" src="" alt="Logo" />
-      </div>
-      <ul id="menu-links"></ul>
-      <div id="menu-bottom">
-        <button id="add-link-btn">+ Add Link</button>
-        <div id="add-link-panel" class="hidden">
-          <input type="text" id="new-link-name" placeholder="Name" />
-          <input type="url" id="new-link-url" placeholder="URL" />
-          <button id="save-link">Save</button>
-        </div>
-        <button id="settings-btn" title="Settings">
-          <span class="icon">&#9881;</span>
-        </button>
-        <div id="settings-panel" class="hidden">
-          <div class="toggle-edit">
-            <span>Edit Menu</span>
-            <label class="toggle-switch" id="toggle-edit-switch">
-              <input type="checkbox" id="toggle-edit-menu" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <button id="choose-logo">Choose Logo</button>
-          <input type="file" id="logo-upload" accept="image/*" style="display:none" />
-          <button id="choose-bg">Choose Background</button>
-          <input type="file" id="bg-upload" accept="image/*" style="display:none" />
-          <div id="settings-extra"></div>
-        </div>
-      </div>
-    </nav>
-    <div id="viewport-carousel"></div>
+  <div class="menu-container">
+    <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
+    <div class="dropdown-menu" id="menu">
+      <div class="menu-header">Toolbox</div>
+      <a href="#" data-url="https://example.com">Test Link</a>
+    </div>
   </div>
+  <div class="content">
+    <iframe id="iframe" src=""></iframe>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
