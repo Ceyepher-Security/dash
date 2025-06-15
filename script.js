@@ -1,70 +1,115 @@
-const menu = document.getElementById('menu');
-const iframe = document.getElementById('iframe');
-const links = document.querySelectorAll('.dropdown-menu a');
+// Collapsible sidebar by double-clicking the sidebar header
+const sidebar = document.getElementById('sidebar');
+const sidebarHeader = document.querySelector('.sidebar-header');
+const links = Array.from(sidebar.querySelectorAll('a[data-url]'));
+const iframeContainer = document.getElementById('iframe-container');
+const mainHeader = document.getElementById('main-header');
+const titleElem = document.querySelector('.title');
 
+// Collapse/expand sidebar on double click of the header
+function toggleSidebarCollapse() {
+  sidebar.classList.toggle('collapsed');
+  document.getElementById('iframe-container').style.left = sidebar.classList.contains('collapsed')
+    ? (window.innerWidth < 800 ? "60px" : "90px")
+    : (window.innerWidth < 800 ? (sidebar.offsetWidth + "px") : "240px");
+}
+
+// Page state
 let historyStack = [];
-let historyIndex = -1;
+let currentIdx = -1;
 
-function toggleMenu() {
-  menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
-}
+// Utility: Try embedding, fallback to new tab if refused
+function tryEmbedOrOpen(url, idx) {
+  // Create a temporary iframe for testing
+  const testIframe = document.createElement('iframe');
+  testIframe.style.display = "none";
+  testIframe.src = url;
 
-links.forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const url = link.getAttribute('data-url');
-    if (historyIndex === -1 || historyStack[historyIndex] !== url) {
-      historyStack = historyStack.slice(0, historyIndex + 1);
-      historyStack.push(url);
-      historyIndex++;
+  // If loaded, show in main iframe, else open in new tab
+  let didLoad = false;
+  let didError = false;
+  // Timeout after 2s in case of block (most browsers fire error instantly)
+  const TIMEOUT = setTimeout(() => {
+    if (!didLoad && !didError) {
+      didError = true;
+      window.open(url, '_blank');
+      // Restore previous active state if needed
+      links.forEach(link => link.classList.remove('active'));
+      if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
     }
-    iframe.src = url;
-    menu.style.display = 'none';
-  });
-});
+    testIframe.remove();
+  }, 2000);
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft' && historyIndex > 0) {
-    historyIndex--;
-    iframe.src = historyStack[historyIndex];
-  } else if (e.key === 'ArrowRight' && historyIndex < historyStack.length - 1) {
-    historyIndex++;
-    iframe.src = historyStack[historyIndex];
-  }
-});
+  testIframe.onload = () => {
+    if (!didError) {
+      didLoad = true;
+      clearTimeout(TIMEOUT);
+      iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+      // Set active link
+      links.forEach(link => link.classList.remove('active'));
+      links[idx].classList.add('active');
+      // Change title based on link text
+      titleElem.textContent = links[idx].textContent.trim();
+    }
+    testIframe.remove();
+  };
+  testIframe.onerror = () => {
+    if (!didLoad) {
+      didError = true;
+      clearTimeout(TIMEOUT);
+      window.open(url, '_blank');
+      links.forEach(link => link.classList.remove('active'));
+      if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
+    }
+    testIframe.remove();
+  };
 
-// Minimize / maximize logic for Mattermost chat
-const mattermostContainer = document.getElementById('mattermostContainer');
-const toggleMattermostBtn = document.getElementById('toggleMattermostBtn');
-
-function applyMattermostState(state) {
-  if (state === 'minimized') {
-    mattermostContainer.classList.add('minimized');
-    toggleMattermostBtn.textContent = '+';
-    toggleMattermostBtn.setAttribute('aria-label', 'Maximize chat');
-  } else {
-    mattermostContainer.classList.remove('minimized');
-    toggleMattermostBtn.textContent = '−';
-    toggleMattermostBtn.setAttribute('aria-label', 'Minimize chat');
-  }
+  document.body.appendChild(testIframe);
 }
 
-// On toggle button click, switch state and save it
-toggleMattermostBtn.addEventListener('click', () => {
-  const isMinimized = mattermostContainer.classList.toggle('minimized');
-  if (isMinimized) {
-    toggleMattermostBtn.textContent = '+';
-    toggleMattermostBtn.setAttribute('aria-label', 'Maximize chat');
-    localStorage.setItem('mattermostChatState', 'minimized');
-  } else {
-    toggleMattermostBtn.textContent = '−';
-    toggleMattermostBtn.setAttribute('aria-label', 'Minimize chat');
-    localStorage.setItem('mattermostChatState', 'maximized');
+// Load a website into an iframe, manage history, update title
+function openSite(idx) {
+  if (idx < 0 || idx >= links.length) return;
+  const url = links[idx].getAttribute('data-url');
+  if (!url) return;
+  // If not moving in history, push
+  if (currentIdx !== idx) {
+    if (currentIdx >= 0 && currentIdx < links.length)
+      links[currentIdx].classList.remove('active');
+    if (currentIdx !== -1 && historyStack[historyStack.length - 1] !== idx) {
+      historyStack.push(idx);
+    } else if (currentIdx === -1) {
+      historyStack.push(idx);
+    }
+    currentIdx = idx;
+  }
+  // Try to embed, fallback to new tab if refused
+  tryEmbedOrOpen(url, idx);
+}
+links.forEach((link, idx) => {
+  link.onclick = (e) => {
+    e.preventDefault();
+    openSite(idx);
   }
 });
 
-// On page load, read state and apply
-window.addEventListener('DOMContentLoaded', () => {
-  const savedState = localStorage.getItem('mattermostChatState') || 'maximized';
-  applyMattermostState(savedState);
+// Arrow key navigation (UP/DOWN) always works
+document.addEventListener('keydown', (e) => {
+  if (
+    e.target.tagName === 'INPUT' ||
+    e.target.tagName === 'TEXTAREA'
+  ) return;
+  if (links.length === 0) return;
+  if (e.key === 'ArrowUp') {
+    // Previous link (wrap)
+    let idx = (currentIdx - 1 + links.length) % links.length;
+    openSite(idx);
+  } else if (e.key === 'ArrowDown') {
+    // Next link (wrap)
+    let idx = (currentIdx + 1) % links.length;
+    openSite(idx);
+  }
 });
+
+// Initial load
+openSite(0);
