@@ -37,13 +37,34 @@ document.addEventListener('keydown', (e) => {
 const mattermostContainer = document.getElementById('mattermostContainer');
 const toggleMattermostBtn = document.getElementById('toggleMattermostBtn');
 
-toggleMattermostBtn.addEventListener('click', () => {
-  mattermostContainer.classList.toggle('minimized');
-  if (mattermostContainer.classList.contains('minimized')) {
+function applyMattermostState(state) {
+  if (state === 'minimized') {
+    mattermostContainer.classList.add('minimized');
     toggleMattermostBtn.textContent = '+';
     toggleMattermostBtn.setAttribute('aria-label', 'Maximize chat');
   } else {
+    mattermostContainer.classList.remove('minimized');
     toggleMattermostBtn.textContent = '−';
     toggleMattermostBtn.setAttribute('aria-label', 'Minimize chat');
   }
+}
+
+// On toggle button click, switch state and save it
+toggleMattermostBtn.addEventListener('click', () => {
+  const isMinimized = mattermostContainer.classList.toggle('minimized');
+  if (isMinimized) {
+    toggleMattermostBtn.textContent = '+';
+    toggleMattermostBtn.setAttribute('aria-label', 'Maximize chat');
+    localStorage.setItem('mattermostChatState', 'minimized');
+  } else {
+    toggleMattermostBtn.textContent = '−';
+    toggleMattermostBtn.setAttribute('aria-label', 'Minimize chat');
+    localStorage.setItem('mattermostChatState', 'maximized');
+  }
+});
+
+// On page load, read state and apply
+window.addEventListener('DOMContentLoaded', () => {
+  const savedState = localStorage.getItem('mattermostChatState') || 'maximized';
+  applyMattermostState(savedState);
 });
