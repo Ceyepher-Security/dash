@@ -1,7 +1,21 @@
-* {
+{
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+.header {
+  width: 100%;
+  padding: 20px 0;
+  background-color: #121212; /* dark background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+}
+
+.logo {
+  width: 150px;
+  height: auto;
 }
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -10,6 +24,7 @@ body {
   color: #e0e0e0; /* light text */
   overflow: hidden;
 }
+
 .menu-container {
   position: fixed;
   top: 20px;
