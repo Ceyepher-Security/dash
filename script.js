@@ -14,7 +14,32 @@ function toggleSidebarCollapse() {
     : (window.innerWidth < 800 ? (sidebar.offsetWidth + "px") : "240px");
 }
 
-// Set active highlight (but don't load)
+// Show a notification if the site can't be embedded
+function showEmbedError(url, linkText) {
+  iframeContainer.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      color: #fff;
+      font-size: 1.1em;
+      text-align: center;
+      padding: 40px;
+    ">
+      <div style="font-size:2em; margin-bottom: 16px;">🚫</div>
+      <strong>Unable to display "${linkText}" here.</strong>
+      <div style="margin-top: 10px;">
+        This site does not allow embedding in dashboards for security reasons.<br>
+        <button style="margin-top:18px;padding:10px 20px;font-size:1em;border-radius:7px;background:#68eaff;color:#181f2d;border:none;cursor:pointer;" onclick="window.open('${url}','_blank')">Open in New Tab</button>
+      </div>
+    </div>
+  `;
+  titleElem.textContent = linkText;
+}
+
+// Set active highlight (and load page)
 function setActive(idx, scroll = true) {
   links.forEach((link, i) => link.classList.toggle('active', i === idx));
   currentIdx = idx;
@@ -22,12 +47,13 @@ function setActive(idx, scroll = true) {
     // Ensure the active link is visible in the sidebar
     links[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
+  loadActive(idx); // Automatically load page on highlight
 }
 
-// Actually load the link (try iframe, fallback to new tab)
+// Actually load the link (try iframe, show embed error if refused)
 function loadActive(idx) {
-  setActive(idx);
   const url = links[idx].getAttribute('data-url');
+  const linkText = links[idx].textContent.trim();
   if (!url) return;
 
   // Test iframe embedding
@@ -43,17 +69,17 @@ function loadActive(idx) {
   const TIMEOUT = setTimeout(() => {
     if (!didLoad && !didError) {
       didError = true;
-      window.open(url, '_blank');
+      showEmbedError(url, linkText);
     }
     testIframe.remove();
-  }, 1500);
+  }, 1200);
 
   testIframe.onload = () => {
     if (!didError) {
       didLoad = true;
       clearTimeout(TIMEOUT);
       iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
-      titleElem.textContent = links[idx].textContent.trim();
+      titleElem.textContent = linkText;
     }
     testIframe.remove();
   };
@@ -61,7 +87,7 @@ function loadActive(idx) {
     if (!didLoad) {
       didError = true;
       clearTimeout(TIMEOUT);
-      window.open(url, '_blank');
+      showEmbedError(url, linkText);
     }
     testIframe.remove();
   };
@@ -73,13 +99,13 @@ function loadActive(idx) {
 links.forEach((link, idx) => {
   link.onclick = (e) => {
     e.preventDefault();
-    loadActive(idx);
+    setActive(idx);
   };
-  // Allow mouse hover to highlight, but don't load
+  // Mouse hover to highlight and load
   link.onmouseenter = () => setActive(idx, false);
 });
 
-// Arrow key navigation: just highlight until Enter
+// Arrow key navigation: highlight and load
 document.addEventListener('keydown', (e) => {
   if (
     e.target.tagName === 'INPUT' ||
@@ -97,10 +123,9 @@ document.addEventListener('keydown', (e) => {
     setActive(idx);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    loadActive(currentIdx);
+    setActive(currentIdx);
   }
 });
 
 // Initial highlight and load
 setActive(0, false);
-loadActive(0);
