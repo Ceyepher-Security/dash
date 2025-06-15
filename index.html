@@ -1,45 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <title>Ceyepher Security Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="https://ceyephersecurity.com/wp-content/uploads/2024/10/logo-no-background-1024x245-1.png" id="favicon">
 </head>
 <body>
-  <header class="header">
-    <img src="logo.png" alt="Logo" class="logo" />
-  </header>
-
-  <div class="menu-container">
-    <div class="hamburger" onclick="toggleMenu()">&#9776;</div>
-    <div class="dropdown-menu" id="menu">
-      <div class="menu-header">Toolbox</div>
-      <a href="#" data-url="https://ceyephersecurity.com">Website</a>
-      <a href="#" data-url="https://support.ceyephersecurity.com">Support</a>
-      <a href="#" data-url="https://vdi.ceyephersecurity.com">Workstation</a>
-      <a href="#" data-url="https://rmm.ceyephersecurity.com">RMM</a>
-      <a href="#" data-url="https://backup.ceyephersecurity.com">Backups</a>
-      <a href="#" data-url="https://vault.ceyephersecurity.com">Vault</a>
-      <a href="#" data-url="https://tawk.to.">CRM</a>
-      <a href="#" data-url="https://workspace.google.com/dashboard">Cloud</a>
-      <a href="#" data-url="https://ceyephersecurity.huntress.io">Huntresss</a>
-      <a href="#" data-url="https://mail.ceyephersecurity.com">Webmail</a>
-      
+  <nav id="sidebar" class="sidebar always-open">
+    <div class="sidebar-header" ondblclick="toggleSidebarCollapse()">
+      <img src="https://ceyephersecurity.com/wp-content/uploads/2024/10/logo-no-background-1024x245-1.png" alt="Ceyepher Security Logo" class="logo" id="main-logo"/>
     </div>
+    <div class="menu-header">Toolbox</div>
+    <a href="#" data-url="https://ceyephersecurity.com">Website</a>
+    <a href="#" data-url="https://support.ceyephersecurity.com">Support</a>
+    <a href="#" data-url="https://vdi.ceyephersecurity.com">Workstation</a>
+    <a href="#" data-url="https://rmm.ceyephersecurity.com">RMM</a>
+    <a href="#" data-url="https://backup.ceyephersecurity.com">Backups</a>
+    <a href="#" data-url="https://vault.ceyephersecurity.com">Vault</a>
+    <a href="#" data-url="https://tawk.to.">CRM</a>
+    <a href="#" data-url="https://workspace.google.com/dashboard">Cloud</a>
+    <a href="#" data-url="https://ceyephersecurity.huntress.io">Huntresss</a>
+    <a href="#" data-url="https://mail.ceyephersecurity.com">Webmail</a>
+    <a href="#" data-url="https://internalchat.ceyephersecurity.com">Internal Chat</a>
+    <a href="#" data-url="https://support.ceyephersecurity.com/knowledge">Knowledge Base</a>
+  </nav>
+  <div id="main-header">
+    <h1 class="title">Ceyepher Security Dashboard</h1>
   </div>
-  <div class="content">
-    <iframe id="iframe" src=""></iframe>
-  </div>
-
-  <div class="mattermost-container" id="mattermostContainer">
-    <div class="mattermost-header">
-      <span>Mattermost Chat</span>
-      <button id="toggleMattermostBtn" aria-label="Minimize chat">−</button>
-    </div>
-    <iframe src="https://your-mattermost-url.com" frameborder="0" allowfullscreen id="mattermostIframe"></iframe>
-  </div>
-
+  <div id="iframe-container"></div>
   <script src="script.js"></script>
 </body>
 </html>
