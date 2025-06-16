@@ -1,161 +1,115 @@
+// Collapsible sidebar by double-clicking the sidebar header
 const sidebar = document.getElementById('sidebar');
+const sidebarHeader = document.querySelector('.sidebar-header');
 const links = Array.from(sidebar.querySelectorAll('a[data-url]'));
 const iframeContainer = document.getElementById('iframe-container');
+const mainHeader = document.getElementById('main-header');
 const titleElem = document.querySelector('.title');
 
-let tabs = [];
-let currentTabIdx = -1;
-
+// Collapse/expand sidebar on double click of the header
 function toggleSidebarCollapse() {
   sidebar.classList.toggle('collapsed');
-  iframeContainer.style.left = sidebar.classList.contains('collapsed')
+  document.getElementById('iframe-container').style.left = sidebar.classList.contains('collapsed')
     ? (window.innerWidth < 800 ? "60px" : "90px")
     : (window.innerWidth < 800 ? (sidebar.offsetWidth + "px") : "240px");
 }
 
-function createTab(url, label) {
-  // Check if a tab for this url exists
-  let existingIdx = tabs.findIndex(tab => tab.url === url);
-  if (existingIdx !== -1) {
-    switchTab(existingIdx);
-    return;
-  }
+// Page state
+let historyStack = [];
+let currentIdx = -1;
 
-  const tabId = "tab-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
-  const tab = { id: tabId, url, label };
-  tabs.push(tab);
+// Utility: Try embedding, fallback to new tab if refused
+function tryEmbedOrOpen(url, idx) {
+  // Create a temporary iframe for testing
+  const testIframe = document.createElement('iframe');
+  testIframe.style.display = "none";
+  testIframe.src = url;
 
-  renderTabs();
-  switchTab(tabs.length - 1);
-}
-
-function switchTab(idx) {
-  if (idx < 0 || idx >= tabs.length) return;
-  currentTabIdx = idx;
-  renderTabs();
-  showBrowser(tabs[idx].url, tabs[idx].label);
-}
-
-function closeTab(idx) {
-  if (idx < 0 || idx >= tabs.length) return;
-  tabs.splice(idx, 1);
-  if (tabs.length === 0) {
-    iframeContainer.innerHTML = "";
-    titleElem.textContent = "Ceyepher Security Dashboard";
-    currentTabIdx = -1;
-    renderTabs();
-    return;
-  }
-  if (currentTabIdx >= tabs.length) currentTabIdx = tabs.length - 1;
-  renderTabs();
-  switchTab(currentTabIdx);
-}
-
-function renderTabs() {
-  // Remove any old tab bar
-  let tabBar = document.getElementById('tab-bar');
-  if (tabBar) tabBar.remove();
-
-  tabBar = document.createElement('div');
-  tabBar.id = 'tab-bar';
-  tabBar.style.display = 'flex';
-  tabBar.style.background = '#181f2d';
-  tabBar.style.borderBottom = '1px solid #30395b';
-  tabBar.style.height = '44px';
-  tabBar.style.alignItems = 'center';
-  tabBar.style.overflowX = 'auto';
-
-  tabs.forEach((tab, i) => {
-    const tabBtn = document.createElement('div');
-    tabBtn.className = 'tab-btn' + (i === currentTabIdx ? ' active' : '');
-    tabBtn.style.display = 'flex';
-    tabBtn.style.alignItems = 'center';
-    tabBtn.style.padding = '0 18px';
-    tabBtn.style.cursor = 'pointer';
-    tabBtn.style.height = '100%';
-    tabBtn.style.fontSize = '1em';
-    tabBtn.style.background = i === currentTabIdx ? '#232c3d' : 'none';
-    tabBtn.style.color = i === currentTabIdx ? '#68eaff' : '#e3e8ef';
-    tabBtn.style.borderRight = '1px solid #222a3b';
-
-    tabBtn.textContent = tab.label.length > 20 ? tab.label.slice(0, 18) + "…" : tab.label;
-    tabBtn.onclick = () => switchTab(i);
-
-    // Close (x) button
-    const closeBtn = document.createElement('span');
-    closeBtn.textContent = ' ×';
-    closeBtn.style.marginLeft = '8px';
-    closeBtn.style.color = '#da5b5b';
-    closeBtn.style.fontWeight = 'bold';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.onclick = (e) => {
-      e.stopPropagation();
-      closeTab(i);
-    };
-    tabBtn.appendChild(closeBtn);
-
-    tabBar.appendChild(tabBtn);
-  });
-
-  // Add tab bar above the browser area
-  iframeContainer.parentNode.insertBefore(tabBar, iframeContainer);
-}
-
-function showBrowser(url, label) {
-  iframeContainer.innerHTML = `
-  <webview id="web-browser" src="${url}" style="width:100%;height:100vh;min-height:400px;border:none;background:#fff;display:block;" allowfullscreen></webview>
-  `;
-  // For fallback in browsers that don't support <webview>, use iframe:
-  setTimeout(() => {
-    const webview = document.getElementById('web-browser');
-    if (!webview || webview.nodeName !== 'WEBVIEW') {
-      iframeContainer.innerHTML = `<iframe src="${url}" style="width:100%;height:100vh;min-height:400px;border:none;background:#fff;display:block;" allowfullscreen></iframe>`;
+  // If loaded, show in main iframe, else open in new tab
+  let didLoad = false;
+  let didError = false;
+  // Timeout after 2s in case of block (most browsers fire error instantly)
+  const TIMEOUT = setTimeout(() => {
+    if (!didLoad && !didError) {
+      didError = true;
+      window.open(url, '_blank');
+      // Restore previous active state if needed
+      links.forEach(link => link.classList.remove('active'));
+      if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
     }
-  }, 100);
-  titleElem.textContent = label;
+    testIframe.remove();
+  }, 2000);
+
+  testIframe.onload = () => {
+    if (!didError) {
+      didLoad = true;
+      clearTimeout(TIMEOUT);
+      iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+      // Set active link
+      links.forEach(link => link.classList.remove('active'));
+      links[idx].classList.add('active');
+      // Change title based on link text
+      titleElem.textContent = links[idx].textContent.trim();
+    }
+    testIframe.remove();
+  };
+  testIframe.onerror = () => {
+    if (!didLoad) {
+      didError = true;
+      clearTimeout(TIMEOUT);
+      window.open(url, '_blank');
+      links.forEach(link => link.classList.remove('active'));
+      if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
+    }
+    testIframe.remove();
+  };
+
+  document.body.appendChild(testIframe);
 }
 
-// Sidebar link click
+// Load a website into an iframe, manage history, update title
+function openSite(idx) {
+  if (idx < 0 || idx >= links.length) return;
+  const url = links[idx].getAttribute('data-url');
+  if (!url) return;
+  // If not moving in history, push
+  if (currentIdx !== idx) {
+    if (currentIdx >= 0 && currentIdx < links.length)
+      links[currentIdx].classList.remove('active');
+    if (currentIdx !== -1 && historyStack[historyStack.length - 1] !== idx) {
+      historyStack.push(idx);
+    } else if (currentIdx === -1) {
+      historyStack.push(idx);
+    }
+    currentIdx = idx;
+  }
+  // Try to embed, fallback to new tab if refused
+  tryEmbedOrOpen(url, idx);
+}
 links.forEach((link, idx) => {
   link.onclick = (e) => {
     e.preventDefault();
-    const url = link.getAttribute('data-url');
-    const label = link.textContent.trim();
-    createTab(url, label);
-    setActiveLink(idx);
-  };
-  link.onmouseenter = () => setActiveLink(idx, false);
+    openSite(idx);
+  }
 });
 
-function setActiveLink(idx, scroll = true) {
-  links.forEach((link, i) => link.classList.toggle('active', i === idx));
-  if (scroll) {
-    links[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }
-}
-
-// Keyboard navigation for sidebar
-let sidebarIdx = 0;
+// Arrow key navigation (UP/DOWN) always works
 document.addEventListener('keydown', (e) => {
   if (
     e.target.tagName === 'INPUT' ||
     e.target.tagName === 'TEXTAREA'
   ) return;
   if (links.length === 0) return;
-
   if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    sidebarIdx = (sidebarIdx - 1 + links.length) % links.length;
-    setActiveLink(sidebarIdx);
+    // Previous link (wrap)
+    let idx = (currentIdx - 1 + links.length) % links.length;
+    openSite(idx);
   } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    sidebarIdx = (sidebarIdx + 1) % links.length;
-    setActiveLink(sidebarIdx);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    links[sidebarIdx].click();
+    // Next link (wrap)
+    let idx = (currentIdx + 1) % links.length;
+    openSite(idx);
   }
 });
 
-// Initial highlight
-setActiveLink(0, false);
+// Initial load
+openSite(0);
