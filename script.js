@@ -1,9 +1,10 @@
 const sidebar = document.getElementById('sidebar');
-const sidebarHeader = document.querySelector('.sidebar-header');
 const links = Array.from(sidebar.querySelectorAll('a[data-url]'));
 const iframeContainer = document.getElementById('iframe-container');
 const titleElem = document.querySelector('.title');
-let currentIdx = 0;
+
+let tabs = [];
+let currentTabIdx = -1;
 
 function toggleSidebarCollapse() {
   sidebar.classList.toggle('collapsed');
@@ -12,67 +13,129 @@ function toggleSidebarCollapse() {
     : (window.innerWidth < 800 ? (sidebar.offsetWidth + "px") : "240px");
 }
 
-function setActive(idx, scroll = true) {
-  links.forEach((link, i) => link.classList.toggle('active', i === idx));
-  currentIdx = idx;
-  if (scroll) {
-    links[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+function createTab(url, label) {
+  // Check if a tab for this url exists
+  let existingIdx = tabs.findIndex(tab => tab.url === url);
+  if (existingIdx !== -1) {
+    switchTab(existingIdx);
+    return;
   }
-  loadActive(idx);
+
+  const tabId = "tab-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
+  const tab = { id: tabId, url, label };
+  tabs.push(tab);
+
+  renderTabs();
+  switchTab(tabs.length - 1);
 }
 
-// Try to embed, but if blocked, redirect the user to the URL in the current tab
-function loadActive(idx) {
-  const url = links[idx].getAttribute('data-url');
-  const linkText = links[idx].textContent.trim();
-  if (!url) return;
-
-  // Test iframe embedding
-  const testIframe = document.createElement('iframe');
-  testIframe.style.display = "none";
-  testIframe.src = url;
-  let didLoad = false, didError = false;
-
-  Array.from(document.body.querySelectorAll('.js-test-iframe')).forEach(el => el.remove());
-  testIframe.className = 'js-test-iframe';
-
-  const TIMEOUT = setTimeout(() => {
-    if (!didLoad && !didError) {
-      didError = true;
-      window.location.href = url;
-    }
-    testIframe.remove();
-  }, 1200);
-
-  testIframe.onload = () => {
-    if (!didError) {
-      didLoad = true;
-      clearTimeout(TIMEOUT);
-      iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
-      titleElem.textContent = linkText;
-    }
-    testIframe.remove();
-  };
-  testIframe.onerror = () => {
-    if (!didLoad) {
-      didError = true;
-      clearTimeout(TIMEOUT);
-      window.location.href = url; // Redirect in current tab
-    }
-    testIframe.remove();
-  };
-
-  document.body.appendChild(testIframe);
+function switchTab(idx) {
+  if (idx < 0 || idx >= tabs.length) return;
+  currentTabIdx = idx;
+  renderTabs();
+  showBrowser(tabs[idx].url, tabs[idx].label);
 }
 
+function closeTab(idx) {
+  if (idx < 0 || idx >= tabs.length) return;
+  tabs.splice(idx, 1);
+  if (tabs.length === 0) {
+    iframeContainer.innerHTML = "";
+    titleElem.textContent = "Ceyepher Security Dashboard";
+    currentTabIdx = -1;
+    renderTabs();
+    return;
+  }
+  if (currentTabIdx >= tabs.length) currentTabIdx = tabs.length - 1;
+  renderTabs();
+  switchTab(currentTabIdx);
+}
+
+function renderTabs() {
+  // Remove any old tab bar
+  let tabBar = document.getElementById('tab-bar');
+  if (tabBar) tabBar.remove();
+
+  tabBar = document.createElement('div');
+  tabBar.id = 'tab-bar';
+  tabBar.style.display = 'flex';
+  tabBar.style.background = '#181f2d';
+  tabBar.style.borderBottom = '1px solid #30395b';
+  tabBar.style.height = '44px';
+  tabBar.style.alignItems = 'center';
+  tabBar.style.overflowX = 'auto';
+
+  tabs.forEach((tab, i) => {
+    const tabBtn = document.createElement('div');
+    tabBtn.className = 'tab-btn' + (i === currentTabIdx ? ' active' : '');
+    tabBtn.style.display = 'flex';
+    tabBtn.style.alignItems = 'center';
+    tabBtn.style.padding = '0 18px';
+    tabBtn.style.cursor = 'pointer';
+    tabBtn.style.height = '100%';
+    tabBtn.style.fontSize = '1em';
+    tabBtn.style.background = i === currentTabIdx ? '#232c3d' : 'none';
+    tabBtn.style.color = i === currentTabIdx ? '#68eaff' : '#e3e8ef';
+    tabBtn.style.borderRight = '1px solid #222a3b';
+
+    tabBtn.textContent = tab.label.length > 20 ? tab.label.slice(0, 18) + "…" : tab.label;
+    tabBtn.onclick = () => switchTab(i);
+
+    // Close (x) button
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = ' ×';
+    closeBtn.style.marginLeft = '8px';
+    closeBtn.style.color = '#da5b5b';
+    closeBtn.style.fontWeight = 'bold';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeTab(i);
+    };
+    tabBtn.appendChild(closeBtn);
+
+    tabBar.appendChild(tabBtn);
+  });
+
+  // Add tab bar above the browser area
+  iframeContainer.parentNode.insertBefore(tabBar, iframeContainer);
+}
+
+function showBrowser(url, label) {
+  iframeContainer.innerHTML = `
+  <webview id="web-browser" src="${url}" style="width:100%;height:100vh;min-height:400px;border:none;background:#fff;display:block;" allowfullscreen></webview>
+  `;
+  // For fallback in browsers that don't support <webview>, use iframe:
+  setTimeout(() => {
+    const webview = document.getElementById('web-browser');
+    if (!webview || webview.nodeName !== 'WEBVIEW') {
+      iframeContainer.innerHTML = `<iframe src="${url}" style="width:100%;height:100vh;min-height:400px;border:none;background:#fff;display:block;" allowfullscreen></iframe>`;
+    }
+  }, 100);
+  titleElem.textContent = label;
+}
+
+// Sidebar link click
 links.forEach((link, idx) => {
   link.onclick = (e) => {
     e.preventDefault();
-    setActive(idx);
+    const url = link.getAttribute('data-url');
+    const label = link.textContent.trim();
+    createTab(url, label);
+    setActiveLink(idx);
   };
-  link.onmouseenter = () => setActive(idx, false);
+  link.onmouseenter = () => setActiveLink(idx, false);
 });
 
+function setActiveLink(idx, scroll = true) {
+  links.forEach((link, i) => link.classList.toggle('active', i === idx));
+  if (scroll) {
+    links[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+// Keyboard navigation for sidebar
+let sidebarIdx = 0;
 document.addEventListener('keydown', (e) => {
   if (
     e.target.tagName === 'INPUT' ||
@@ -82,16 +145,17 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === 'ArrowUp') {
     e.preventDefault();
-    let idx = (currentIdx - 1 + links.length) % links.length;
-    setActive(idx);
+    sidebarIdx = (sidebarIdx - 1 + links.length) % links.length;
+    setActiveLink(sidebarIdx);
   } else if (e.key === 'ArrowDown') {
     e.preventDefault();
-    let idx = (currentIdx + 1) % links.length;
-    setActive(idx);
+    sidebarIdx = (sidebarIdx + 1) % links.length;
+    setActiveLink(sidebarIdx);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    setActive(currentIdx);
+    links[sidebarIdx].click();
   }
 });
 
-setActive(0, false);
+// Initial highlight
+setActiveLink(0, false);
