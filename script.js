@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Collapsible sidebar by double-clicking the sidebar header
   const sidebar = document.getElementById('sidebar');
   const sidebarHeader = document.querySelector('.sidebar-header');
   const links = Array.from(sidebar.querySelectorAll('a[data-url]'));
@@ -22,14 +21,18 @@ document.addEventListener('DOMContentLoaded', function() {
   // Embeddability cache
   const embedCache = new Map();
 
+  function showUrlInIframe(url, idx) {
+    iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+    links.forEach(link => link.classList.remove('active'));
+    links[idx].classList.add('active');
+    titleElem.textContent = links[idx].textContent.trim();
+  }
+
   function tryEmbedOrOpen(url, idx) {
-    // Check cache first
+    // Instant if cache hit
     if (embedCache.has(url)) {
       if (embedCache.get(url) === true) {
-        iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
-        links.forEach(link => link.classList.remove('active'));
-        links[idx].classList.add('active');
-        titleElem.textContent = links[idx].textContent.trim();
+        showUrlInIframe(url, idx);
       } else {
         window.open(url, '_blank');
         links.forEach(link => link.classList.remove('active'));
@@ -38,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // Otherwise, proceed with the test iframe (first time only)
+    // Otherwise, first time: test embeddability
     const testIframe = document.createElement('iframe');
     testIframe.style.display = "none";
     testIframe.src = url;
@@ -48,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const TIMEOUT = setTimeout(() => {
       if (!didLoad && !didError) {
         didError = true;
-        embedCache.set(url, false); // Not embeddable
+        embedCache.set(url, false);
         window.open(url, '_blank');
         links.forEach(link => link.classList.remove('active'));
         if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
@@ -60,11 +63,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!didError) {
         didLoad = true;
         clearTimeout(TIMEOUT);
-        embedCache.set(url, true); // Embeddable!
-        iframeContainer.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
-        links.forEach(link => link.classList.remove('active'));
-        links[idx].classList.add('active');
-        titleElem.textContent = links[idx].textContent.trim();
+        embedCache.set(url, true);
+        showUrlInIframe(url, idx);
       }
       testIframe.remove();
     };
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!didLoad) {
         didError = true;
         clearTimeout(TIMEOUT);
-        embedCache.set(url, false); // Not embeddable
+        embedCache.set(url, false);
         window.open(url, '_blank');
         links.forEach(link => link.classList.remove('active'));
         if (typeof currentIdx === "number" && currentIdx >= 0) links[currentIdx].classList.add('active');
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Arrow key navigation (UP/DOWN)
+  // Arrow key navigation (UP/DOWN) always works, and is INSTANT after first check
   document.addEventListener('keydown', (e) => {
     if (
       e.target.tagName === 'INPUT' ||
@@ -116,11 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
     ) return;
     if (links.length === 0) return;
     if (e.key === 'ArrowUp') {
-      // Previous link (wrap)
       let idx = (currentIdx - 1 + links.length) % links.length;
       openSite(idx);
     } else if (e.key === 'ArrowDown') {
-      // Next link (wrap)
       let idx = (currentIdx + 1) % links.length;
       openSite(idx);
     }
