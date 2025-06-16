@@ -3,10 +3,8 @@ const sidebarHeader = document.querySelector('.sidebar-header');
 const links = Array.from(sidebar.querySelectorAll('a[data-url]'));
 const iframeContainer = document.getElementById('iframe-container');
 const titleElem = document.querySelector('.title');
-
 let currentIdx = 0;
 
-// Collapse/expand sidebar on double click of the header
 function toggleSidebarCollapse() {
   sidebar.classList.toggle('collapsed');
   iframeContainer.style.left = sidebar.classList.contains('collapsed')
@@ -14,43 +12,16 @@ function toggleSidebarCollapse() {
     : (window.innerWidth < 800 ? (sidebar.offsetWidth + "px") : "240px");
 }
 
-// Show a notification if the site can't be embedded
-function showEmbedError(url, linkText) {
-  iframeContainer.innerHTML = `
-    <div style="
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      color: #fff;
-      font-size: 1.1em;
-      text-align: center;
-      padding: 40px;
-    ">
-      <div style="font-size:2em; margin-bottom: 16px;">🚫</div>
-      <strong>Unable to display "${linkText}" here.</strong>
-      <div style="margin-top: 10px;">
-        This site does not allow embedding in dashboards for security reasons.<br>
-        <button style="margin-top:18px;padding:10px 20px;font-size:1em;border-radius:7px;background:#68eaff;color:#181f2d;border:none;cursor:pointer;" onclick="window.open('${url}','_blank')">Open in New Tab</button>
-      </div>
-    </div>
-  `;
-  titleElem.textContent = linkText;
-}
-
-// Set active highlight (and load page)
 function setActive(idx, scroll = true) {
   links.forEach((link, i) => link.classList.toggle('active', i === idx));
   currentIdx = idx;
   if (scroll) {
-    // Ensure the active link is visible in the sidebar
     links[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
-  loadActive(idx); // Automatically load page on highlight
+  loadActive(idx);
 }
 
-// Actually load the link (try iframe, show embed error if refused)
+// Try to embed, but if blocked, redirect the user to the URL in the current tab
 function loadActive(idx) {
   const url = links[idx].getAttribute('data-url');
   const linkText = links[idx].textContent.trim();
@@ -62,14 +33,13 @@ function loadActive(idx) {
   testIframe.src = url;
   let didLoad = false, didError = false;
 
-  // Clean up any old test iframes
   Array.from(document.body.querySelectorAll('.js-test-iframe')).forEach(el => el.remove());
   testIframe.className = 'js-test-iframe';
 
   const TIMEOUT = setTimeout(() => {
     if (!didLoad && !didError) {
       didError = true;
-      showEmbedError(url, linkText);
+      window.location.href = url;
     }
     testIframe.remove();
   }, 1200);
@@ -87,7 +57,7 @@ function loadActive(idx) {
     if (!didLoad) {
       didError = true;
       clearTimeout(TIMEOUT);
-      showEmbedError(url, linkText);
+      window.location.href = url; // Redirect in current tab
     }
     testIframe.remove();
   };
@@ -95,17 +65,14 @@ function loadActive(idx) {
   document.body.appendChild(testIframe);
 }
 
-// Mouse click handler: always loads
 links.forEach((link, idx) => {
   link.onclick = (e) => {
     e.preventDefault();
     setActive(idx);
   };
-  // Mouse hover to highlight and load
   link.onmouseenter = () => setActive(idx, false);
 });
 
-// Arrow key navigation: highlight and load
 document.addEventListener('keydown', (e) => {
   if (
     e.target.tagName === 'INPUT' ||
@@ -127,5 +94,4 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Initial highlight and load
 setActive(0, false);
